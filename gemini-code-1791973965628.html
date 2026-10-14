@@ -1,0 +1,3491 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>ПОД ДАВЛЕНИЕМ : Погружение батискафа «Аргон-IV» в Бездну Челленджера</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap" rel="stylesheet" />
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+  <style>
+    :root {
+      --bg-top: #7FD8E8;
+      --bg-bottom: #1B8FB0;
+      --hud-color: rgba(230, 248, 255, 0.88);
+      --hud-muted: rgba(180, 220, 238, 0.52);
+      --hud-border: rgba(140, 220, 255, 0.18);
+      --accent-cyan: #4CF2FF;
+      --accent-violet: #8A7CFF;
+      --accent-rose: #FF4F8B;
+      --beam-warm: #FFE7B8;
+      --font-display: 'Roboto Flex', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --title-wdth: 135;
+      --title-wght: 320;
+      --title-track: 0.12em;
+      --cursor-x: 50vw;
+      --cursor-y: 50vh;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      background-color: #010409;
+      color: #ECF8FF;
+      font-family: var(--font-display);
+      overscroll-behavior-y: none;
+      overflow-x: hidden;
+      scrollbar-width: none;
+    }
+
+    html::-webkit-scrollbar {
+      display: none;
+    }
+
+    body {
+      width: 100%;
+      min-height: 1200vh;
+      overflow-x: hidden;
+      background: #010409;
+      cursor: none;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    @media (pointer: coarse), (prefers-reduced-motion: reduce) {
+      body {
+        cursor: auto;
+      }
+    }
+
+    /* КАСТОМНЫЙ КУРСОР */
+    .custom-cursor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 44px;
+      height: 44px;
+      margin-left: -22px;
+      margin-top: -22px;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate3d(var(--cursor-x), var(--cursor-y), 0);
+      transition: width 0.25s ease, height 0.25s ease, margin 0.25s ease, opacity 0.25s ease;
+      mix-blend-mode: screen;
+    }
+
+    @media (pointer: coarse) {
+      .custom-cursor {
+        display: none;
+      }
+    }
+
+    .cursor-ring {
+      width: 100%;
+      height: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      border-radius: 50%;
+      position: relative;
+      transition: transform 0.2s ease, border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .cursor-ring::after {
+      content: '';
+      position: absolute;
+      inset: 50%;
+      width: 4px;
+      height: 4px;
+      margin: -2px 0 0 -2px;
+      background: var(--accent-cyan);
+      border-radius: 50%;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    .custom-cursor[data-mode="spotlight"] {
+      width: 84px;
+      height: 84px;
+      margin-left: -42px;
+      margin-top: -42px;
+    }
+
+    .custom-cursor[data-mode="spotlight"] .cursor-ring {
+      border-color: rgba(255, 231, 184, 0.65);
+      background: radial-gradient(circle, rgba(255, 231, 184, 0.22) 0%, rgba(255, 231, 184, 0.04) 60%, transparent 75%);
+      box-shadow: 0 0 30px rgba(255, 231, 184, 0.25);
+    }
+
+    .custom-cursor[data-mode="spotlight"] .cursor-ring::after {
+      background: var(--beam-warm);
+    }
+
+    .custom-cursor[data-mode="sonar"] {
+      width: 68px;
+      height: 68px;
+      margin-left: -34px;
+      margin-top: -34px;
+    }
+
+    .custom-cursor[data-mode="sonar"] .cursor-ring {
+      border-color: rgba(76, 242, 255, 0.85);
+      border-style: dashed;
+      animation: sonarSpin 8s linear infinite;
+    }
+
+    .custom-cursor[data-mode="sonar"] .cursor-crosshair {
+      opacity: 1;
+    }
+
+    .custom-cursor[data-hover="true"] .cursor-ring {
+      transform: scale(1.35);
+      border-color: var(--accent-cyan);
+      background: rgba(76, 242, 255, 0.12);
+    }
+
+    .cursor-crosshair {
+      position: absolute;
+      inset: -8px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .cursor-crosshair::before,
+    .cursor-crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(76, 242, 255, 0.7);
+    }
+
+    .cursor-crosshair::before {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+    }
+
+    .cursor-crosshair::after {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+    }
+
+    .cursor-label {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      color: var(--hud-color);
+      white-space: nowrap;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    @keyframes sonarSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ПРЕЛОАДЕР: БАЛЛАСТНЫЕ ЦИСТЕРНЫ */
+    .preloader {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      background: #020810;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.85s;
+    }
+
+    .preloader.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .preloader-header {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--hud-muted);
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .tank-wrap {
+      position: relative;
+      width: 220px;
+      height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tank-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .preloader-stats {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .preloader-pct {
+      font-size: 32px;
+      font-weight: 300;
+      letter-spacing: 0.08em;
+      color: #ECF8FF;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .preloader-sub {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+    }
+
+    /* СЛОИ РЕНДЕРА */
+    .viewport-layers {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    #webgl-canvas,
+    #bio-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #bio-canvas {
+      z-index: 2;
+    }
+
+    /* HUD И ПРИБОРЫ */
+    .hud-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      pointer-events: none;
+      font-family: var(--font-mono);
+      color: var(--hud-color);
+      transition: opacity 0.4s ease;
+    }
+
+    .hud-glitch {
+      animation: hudGlitchAnim 150ms steps(2, end) infinite;
+    }
+
+    @keyframes hudGlitchAnim {
+      0% {
+        text-shadow: -3px 0 #FF4F8B, 3px 0 #4CF2FF;
+        transform: translate(1px, -1px);
+      }
+      50% {
+        text-shadow: 3px 0 #FF4F8B, -3px 0 #4CF2FF;
+        transform: translate(-2px, 1px);
+      }
+      100% {
+        text-shadow: -1px 0 #8A7CFF, 2px 0 #4CF2FF;
+        transform: translate(0, 0);
+      }
+    }
+
+    /* ВЕРХНЯЯ ПАНЕЛЬ БАТИСКАФА */
+    .hud-top-bar {
+      position: absolute;
+      top: 24px;
+      left: 28px;
+      right: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .vessel-id {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .vessel-code {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+    }
+
+    .vessel-mission {
+      font-size: 10px;
+      color: var(--hud-muted);
+      letter-spacing: 0.14em;
+    }
+
+    /* ТЕЛЕМЕТРИЯ СПРАВА ВВЕРХУ */
+    .telemetry-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(4, auto);
+      gap: 18px 26px;
+      background: rgba(3, 14, 26, 0.52);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      padding: 12px 18px;
+      border-radius: 4px;
+    }
+
+    .telemetry-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+    }
+
+    .telemetry-label {
+      font-size: 9px;
+      letter-spacing: 0.16em;
+      color: var(--hud-muted);
+      text-transform: uppercase;
+    }
+
+    .telemetry-val {
+      font-size: 18px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      color: #FFFFFF;
+    }
+
+    .telemetry-unit {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      margin-left: 3px;
+    }
+
+    .hud-controls {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .hud-btn {
+      background: rgba(3, 14, 26, 0.58);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--hud-border);
+      color: var(--hud-color);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 8px 13px;
+      border-radius: 3px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: border-color 0.25s ease, background-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
+    }
+
+    .hud-btn:hover,
+    .hud-btn:focus-visible {
+      border-color: var(--accent-cyan);
+      background: rgba(76, 242, 255, 0.12);
+      outline: none;
+    }
+
+    .hud-btn[aria-pressed="true"] {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .sound-bars {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 10px;
+    }
+
+    .sound-bars span {
+      width: 2px;
+      height: 3px;
+      background: currentColor;
+      transition: height 0.2s ease;
+    }
+
+    .hud-btn[aria-pressed="true"] .sound-bars span:nth-child(1) {
+      animation: eqBar 0.7s ease-in-out infinite alternate;
+    }
+    .hud-btn[aria-pressed="true"] .sound-bars span:nth-child(2) {
+      animation: eqBar 0.5s ease-in-out 0.15s infinite alternate;
+    }
+    .hud-btn[aria-pressed="true"] .sound-bars span:nth-child(3) {
+      animation: eqBar 0.65s ease-in-out 0.3s infinite alternate;
+    }
+
+    @keyframes eqBar {
+      from { height: 2px; }
+      to { height: 10px; }
+    }
+
+    /* ВЕРТИКАЛЬНАЯ ШКАЛА ГЛУБИНЫ СЛЕВА */
+    .depth-scale {
+      position: absolute;
+      left: 28px;
+      top: 110px;
+      bottom: 48px;
+      width: 120px;
+      display: flex;
+      align-items: stretch;
+      pointer-events: auto;
+    }
+
+    .scale-track {
+      position: relative;
+      width: 2px;
+      height: 100%;
+      background: rgba(180, 225, 255, 0.16);
+      margin-left: 8px;
+    }
+
+    .scale-progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(to bottom, #7FD8E8, var(--accent-cyan), var(--accent-violet));
+    }
+
+    .scale-tick {
+      position: absolute;
+      left: -6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(-50%);
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: var(--hud-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 4px 0;
+      transition: color 0.2s ease;
+    }
+
+    .scale-tick::before {
+      content: '';
+      width: 14px;
+      height: 1px;
+      background: rgba(180, 225, 255, 0.35);
+      transition: width 0.2s ease, background-color 0.2s ease;
+    }
+
+    .scale-tick:hover,
+    .scale-tick:focus-visible,
+    .scale-tick.is-active {
+      color: #FFFFFF;
+      outline: none;
+    }
+
+    .scale-tick:hover::before,
+    .scale-tick.is-active::before {
+      width: 22px;
+      background: var(--accent-cyan);
+    }
+
+    .scale-runner {
+      position: absolute;
+      left: -5px;
+      top: 0%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      transition: top 0.06s linear;
+    }
+
+    .runner-diamond {
+      width: 12px;
+      height: 12px;
+      border: 1.5px solid var(--accent-cyan);
+      background: #020A14;
+      transform: rotate(45deg);
+      box-shadow: 0 0 12px var(--accent-cyan);
+    }
+
+    .runner-readout {
+      background: rgba(2, 12, 24, 0.85);
+      border: 1px solid rgba(76, 242, 255, 0.45);
+      color: var(--accent-cyan);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* СТАТУС КАСАНИЯ ДНА */
+    .touchdown-banner {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--beam-warm);
+      background: rgba(8, 12, 18, 0.78);
+      border: 1px solid rgba(255, 231, 184, 0.35);
+      padding: 8px 18px;
+      border-radius: 3px;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .touchdown-banner.is-visible {
+      opacity: 1;
+    }
+
+    /* ИНТЕРАКТИВНЫЕ УЗЛЫ СУЩЕСТВ (ДЛЯ КЛАВИАТУРЫ И КЛИКА) */
+    .creature-markers {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none;
+    }
+
+    .creature-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 1px solid rgba(76, 242, 255, 0.32);
+      background: radial-gradient(circle, rgba(76, 242, 255, 0.14) 0%, transparent 70%);
+      color: #FFFFFF;
+      cursor: pointer;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.35s ease, transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .creature-node.is-active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .creature-node:hover,
+    .creature-node:focus-visible {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 24px rgba(76, 242, 255, 0.45);
+      transform: translate(-50%, -50%) scale(1.15);
+      outline: none;
+    }
+
+    .creature-node-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    .creature-node-tag {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 6px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(235, 250, 255, 0.9);
+      background: rgba(2, 10, 20, 0.72);
+      border: 1px solid rgba(76, 242, 255, 0.25);
+      padding: 2px 7px;
+      border-radius: 2px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* СТЕКЛЯННАЯ КАРТОЧКА СУЩЕСТВА */
+    .creature-modal {
+      position: fixed;
+      right: 32px;
+      bottom: 32px;
+      width: min(420px, calc(100vw - 48px));
+      z-index: 80;
+      background: rgba(4, 14, 28, 0.72);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      border: 1px solid rgba(76, 242, 255, 0.32);
+      border-radius: 6px;
+      padding: 24px;
+      color: #ECF8FF;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+      transform: translateY(24px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1), transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.35s;
+    }
+
+    .creature-modal.is-open {
+      transform: translateY(0);
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid rgba(140, 220, 255, 0.16);
+      padding-bottom: 12px;
+    }
+
+    .modal-kicker {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .modal-title-ru {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .modal-title-lat {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-style: italic;
+      color: var(--hud-muted);
+      margin-top: 2px;
+    }
+
+    .modal-close {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #FFF;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      width: 28px;
+      height: 28px;
+      border-radius: 3px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .modal-close:hover,
+    .modal-close:focus-visible {
+      border-color: var(--accent-cyan);
+      background: rgba(76, 242, 255, 0.15);
+      outline: none;
+    }
+
+    .modal-meta {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .modal-meta div span {
+      display: block;
+      font-size: 9px;
+      color: var(--hud-muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .modal-fact {
+      font-size: 14px;
+      line-height: 1.62;
+      color: rgba(235, 248, 255, 0.92);
+      font-weight: 350;
+    }
+
+    /* СЕМАНТИЧЕСКИЙ КОНТЕНТ И СЕКЦИИ ЗОН */
+    main.voyage-main {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 1200vh;
+      pointer-events: none;
+    }
+
+    .zone-section {
+      position: absolute;
+      left: 0;
+      right: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 10vw 0 180px;
+      pointer-events: none;
+    }
+
+    /* HERO СЕКЦИЯ (ВАТЕРЛИНИЯ) */
+    .zone-hero {
+      top: 0;
+      height: 100vh;
+      padding: 0 6vw;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .hero-waterline-box {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .hero-overline {
+      font-family: var(--font-mono);
+      font-size: clamp(10px, 1.1vw, 13px);
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: #082738;
+      margin-bottom: 18px;
+      font-weight: 600;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(42px, 9.2vw, 138px);
+      line-height: 0.96;
+      text-transform: uppercase;
+      font-variation-settings: 'wdth' 135, 'wght' 750;
+      letter-spacing: 0.06em;
+      color: #062335;
+      position: relative;
+      transition: opacity 0.2s ease;
+    }
+
+    /* Когда WebGL-шейдер рендерит преломление заголовка прямо на ватерлинии,
+       DOM-заголовок остается на том же месте для доступности и выделения */
+    body.webgl-title-active .hero-title {
+      color: transparent;
+      text-shadow: none;
+    }
+
+    .hero-subtitle {
+      margin-top: 28px;
+      font-family: var(--font-mono);
+      font-size: clamp(11px, 1.2vw, 14px);
+      letter-spacing: 0.18em;
+      color: rgba(240, 253, 255, 0.95);
+      text-transform: uppercase;
+      text-shadow: 0 2px 12px rgba(4, 28, 44, 0.55);
+    }
+
+    .scroll-cue {
+      position: absolute;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: rgba(240, 252, 255, 0.9);
+    }
+
+    .scroll-cue-line {
+      width: 1px;
+      height: 44px;
+      background: rgba(255, 255, 255, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scroll-cue-line::after {
+      content: '';
+      position: absolute;
+      top: -100%;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #FFFFFF;
+      animation: cueDrop 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    @keyframes cueDrop {
+      0% { top: -100%; }
+      100% { top: 100%; }
+    }
+
+    /* КАРТОЧКИ И ТИПОГРАФИКА ЗОН */
+    .zone-content {
+      max-width: 620px;
+      pointer-events: auto;
+    }
+
+    .zone-section.align-right {
+      align-items: flex-end;
+      padding-right: 9vw;
+    }
+
+    .zone-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .zone-tag::before {
+      content: '';
+      width: 24px;
+      height: 1px;
+      background: var(--accent-cyan);
+    }
+
+    .pressure-heading {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 5.4vw, 78px);
+      line-height: 1.02;
+      text-transform: uppercase;
+      color: #FFFFFF;
+      margin-bottom: 22px;
+      font-variation-settings: 'wdth' var(--title-wdth), 'wght' var(--title-wght);
+      letter-spacing: var(--title-track);
+      transition: font-variation-settings 0.08s linear, letter-spacing 0.08s linear;
+      will-change: font-variation-settings, letter-spacing;
+    }
+
+    .line-mask {
+      overflow: hidden;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .line-inner {
+      display: block;
+      font-size: clamp(15px, 1.35vw, 19px);
+      line-height: 1.58;
+      color: rgba(230, 246, 255, 0.88);
+      font-weight: 340;
+      transform: translateY(108%);
+      transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: transform;
+    }
+
+    .zone-section.is-inview .line-inner {
+      transform: translateY(0%);
+    }
+
+    .zone-data-strip {
+      margin-top: 22px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(140, 220, 255, 0.18);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--hud-muted);
+    }
+
+    .zone-data-strip strong {
+      color: #ECF8FF;
+      font-weight: 500;
+    }
+
+    .zone-hint-pill {
+      margin-top: 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--beam-warm);
+      background: rgba(255, 231, 184, 0.08);
+      border: 1px solid rgba(255, 231, 184, 0.28);
+      padding: 8px 14px;
+      border-radius: 3px;
+    }
+
+    /* КНОПКА ВСПЛЫТИЯ НА ДНЕ */
+    .ascent-wrap {
+      margin-top: 32px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      pointer-events: auto;
+    }
+
+    .btn-resurface {
+      position: relative;
+      background: rgba(76, 242, 255, 0.1);
+      border: 1px solid var(--accent-cyan);
+      color: #FFFFFF;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      padding: 16px 32px;
+      border-radius: 3px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-resurface:hover,
+    .btn-resurface:focus-visible {
+      background: rgba(76, 242, 255, 0.24);
+      box-shadow: 0 0 36px rgba(76, 242, 255, 0.35);
+      outline: none;
+    }
+
+    /* АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
+    @media (max-width: 900px) {
+      .hud-top-bar {
+        top: 14px;
+        left: 14px;
+        right: 14px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .telemetry-panel {
+        align-items: stretch;
+      }
+
+      .telemetry-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px 14px;
+        padding: 10px 12px;
+      }
+
+      .telemetry-item {
+        align-items: flex-start;
+      }
+
+      .telemetry-val {
+        font-size: 14px;
+      }
+
+      .depth-scale {
+        left: 10px;
+        top: 185px;
+        bottom: 30px;
+        width: 64px;
+      }
+
+      .scale-tick span {
+        display: none;
+      }
+
+      .zone-section {
+        padding: 0 20px 0 68px;
+      }
+
+      .zone-section.align-right {
+        align-items: flex-start;
+        padding-right: 20px;
+      }
+
+      .creature-modal {
+        right: 14px;
+        left: 14px;
+        bottom: 14px;
+        width: auto;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .line-inner {
+        transform: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="webgl-title-active">
+
+  <!-- КАСТОМНЫЙ КУРСОР -->
+  <div class="custom-cursor" id="custom-cursor" data-mode="ring" aria-hidden="true">
+    <div class="cursor-ring">
+      <div class="cursor-crosshair"></div>
+    </div>
+    <div class="cursor-label" id="cursor-label">ОБЗОР</div>
+  </div>
+
+  <!-- СЦЕНА 0: ПРЕЛОАДЕР «ЗАПОЛНЕНИЕ БАЛЛАСТНЫХ ЦИСТЕРН» -->
+  <div class="preloader" id="preloader" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Заполнение балластных цистерн">
+    <div class="preloader-header">ГОСУДАРСТВЕННЫЙ ОКЕАНОГРАФИЧЕСКИЙ ИНСТИТУТ // АППАРАТ «АРГОН-IV»</div>
+    <div class="tank-wrap">
+      <svg class="tank-svg" viewBox="0 0 200 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <clipPath id="ballast-clip">
+            <path d="M55 40 C55 20, 145 20, 145 40 L145 210 C145 232, 55 232, 55 210 Z" />
+          </clipPath>
+          <linearGradient id="water-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#4CF2FF" stop-opacity="0.85" />
+            <stop offset="100%" stop-color="#0B4F6C" stop-opacity="0.95" />
+          </linearGradient>
+        </defs>
+
+        <!-- Внешний технический контур цистерны -->
+        <line x1="100" y1="4" x2="100" y2="24" stroke="#4CF2FF" stroke-width="1.5" />
+        <rect x="82" y="10" width="36" height="8" rx="2" stroke="#4CF2FF" stroke-width="1" />
+
+        <!-- Внутренний объем воды -->
+        <g clip-path="url(#ballast-clip)">
+          <rect x="45" y="15" width="110" height="230" fill="rgba(76, 242, 255, 0.04)" />
+          <g id="tank-water-group" transform="translate(0, 225)">
+            <path id="tank-wave-path" d="M 40 0 Q 70 -6 100 0 T 160 0 L 160 250 L 40 250 Z" fill="url(#water-grad)" />
+          </g>
+          <!-- Мерная сетка внутри цистерны -->
+          <line x1="55" y1="65" x2="72" y2="65" stroke="rgba(255,255,255,0.28)" stroke-width="1" />
+          <line x1="55" y1="105" x2="78" y2="105" stroke="rgba(255,255,255,0.28)" stroke-width="1" />
+          <line x1="55" y1="145" x2="72" y2="145" stroke="rgba(255,255,255,0.28)" stroke-width="1" />
+          <line x1="55" y1="185" x2="78" y2="185" stroke="rgba(255,255,255,0.28)" stroke-width="1" />
+        </g>
+
+        <!-- Силуэт корпуса балластной цистерны -->
+        <path d="M55 40 C55 20, 145 20, 145 40 L145 210 C145 232, 55 232, 55 210 Z" stroke="#7FD8E8" stroke-width="1.5" />
+        <path d="M46 55 L46 195 M154 55 L154 195" stroke="rgba(127, 216, 232, 0.35)" stroke-width="1" stroke-dasharray="3 4" />
+        <line x1="100" y1="227" x2="100" y2="252" stroke="#4CF2FF" stroke-width="1.5" />
+      </svg>
+    </div>
+    <div class="preloader-stats">
+      <div class="preloader-pct" id="preloader-pct">000%</div>
+      <div class="preloader-sub" id="preloader-status">ЗАПОЛНЕНИЕ БАЛЛАСТНЫХ ЦИСТЕРН</div>
+    </div>
+  </div>
+
+  <!-- СЛОИ РЕНДЕРА: WEBGL + ПРОЦЕДУРНАЯ ФАУНА -->
+  <div class="viewport-layers" aria-hidden="true">
+    <canvas id="webgl-canvas"></canvas>
+    <canvas id="bio-canvas"></canvas>
+  </div>
+
+  <!-- ИНТЕРАКТИВНЫЕ УЗЛЫ СУЩЕСТВ В DOM (ДЛЯ КЛИКА И ТАБ-НАВИГАЦИИ) -->
+  <div class="creature-markers" id="creature-markers" aria-label="Обнаруженные глубоководные организмы"></div>
+
+  <!-- ПРИБОРНАЯ ПАНЕЛЬ (HUD) -->
+  <header class="hud-layer" id="hud-layer">
+    <div class="hud-top-bar">
+      <div class="vessel-id">
+        <div class="vessel-code">
+          <span class="status-dot" id="status-dot"></span>
+          <span>БАТИСКАФ «АРГОН-IV» // МИССИЯ МВ-10935</span>
+        </div>
+        <div class="vessel-mission" id="hud-zone-label">ЗОНА 00 : ПОВЕРХНОСТЬ ОКЕАНА</div>
+      </div>
+
+      <div class="telemetry-panel">
+        <div class="telemetry-grid" id="telemetry-grid" role="region" aria-label="Показания приборов батискафа">
+          <div class="telemetry-item">
+            <span class="telemetry-label">ГЛУБИНА</span>
+            <span class="telemetry-val"><span id="hud-depth">0</span><span class="telemetry-unit">М</span></span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">ДАВЛЕНИЕ</span>
+            <span class="telemetry-val"><span id="hud-pressure">1.0</span><span class="telemetry-unit">АТМ</span></span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">ТЕМПЕРАТУРА</span>
+            <span class="telemetry-val"><span id="hud-temp">28.0</span><span class="telemetry-unit">°C</span></span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">СОЛНЕЧНЫЙ СВЕТ</span>
+            <span class="telemetry-val"><span id="hud-light">100.0</span><span class="telemetry-unit">%</span></span>
+          </div>
+        </div>
+
+        <div class="hud-controls">
+          <button type="button" class="hud-btn magnetic-el" id="sonar-ping-btn" title="Импульс активного гидролокатора">
+            <span>СОНАР: ИМПУЛЬС</span>
+          </button>
+          <button type="button" class="hud-btn magnetic-el" id="audio-toggle-btn" aria-pressed="false">
+            <span class="sound-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+            <span id="audio-btn-label">ЗВУК: ВЫКЛ</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ВЕРТИКАЛЬНАЯ ШКАЛА ГЛУБИНЫ СЛЕВА -->
+    <nav class="depth-scale" aria-label="Шкала глубин Марианской впадины">
+      <div class="scale-track">
+        <div class="scale-progress" id="scale-progress"></div>
+
+        <button type="button" class="scale-tick is-active" style="top: 0%;" data-target-depth="0">
+          <span>0 М · ПОВЕРХНОСТЬ</span>
+        </button>
+        <button type="button" class="scale-tick" style="top: 14%;" data-target-depth="200">
+          <span>200 М · МЕЗОПЕЛАГИАЛЬ</span>
+        </button>
+        <button type="button" class="scale-tick" style="top: 34%;" data-target-depth="1000">
+          <span>1 000 М · БАТИПЕЛАГИАЛЬ</span>
+        </button>
+        <button type="button" class="scale-tick" style="top: 58%;" data-target-depth="4000">
+          <span>4 000 М · АБИССОПЕЛАГИАЛЬ</span>
+        </button>
+        <button type="button" class="scale-tick" style="top: 74%;" data-target-depth="6000">
+          <span>6 000 М · ХАДОПЕЛАГИАЛЬ</span>
+        </button>
+        <button type="button" class="scale-tick" style="top: 100%;" data-target-depth="10935">
+          <span>10 935 М · ДНО ВПАДИНЫ</span>
+        </button>
+
+        <div class="scale-runner" id="scale-runner">
+          <div class="runner-diamond"></div>
+          <div class="runner-readout" id="runner-readout">0 М</div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="touchdown-banner" id="touchdown-banner" role="status" aria-live="polite">
+      КАСАНИЕ ДНА 10 935 М // ПРИБОРЫ В РЕЖИМЕ ТИШИНЫ
+    </div>
+  </header>
+
+  <!-- КАРТОЧКА СУЩЕСТВА -->
+  <aside class="creature-modal" id="creature-modal" role="dialog" aria-modal="false" aria-labelledby="modal-title-ru" aria-hidden="true">
+    <div class="modal-header">
+      <div>
+        <div class="modal-kicker">БИОЛОГИЧЕСКИЙ ОБРАЗЕЦ // ЗАХВАТ ОПТИКИ</div>
+        <h3 class="modal-title-ru" id="modal-title-ru">Бочкоглаз</h3>
+        <div class="modal-title-lat" id="modal-title-lat">Macropinna microstoma</div>
+      </div>
+      <button type="button" class="modal-close" id="modal-close" aria-label="Закрыть карточку">✕</button>
+    </div>
+    <div class="modal-meta">
+      <div>
+        <span>ДИАПАЗОН ГЛУБИН</span>
+        <strong id="modal-depth">600 – 800 м</strong>
+      </div>
+      <div>
+        <span>РАБОЧЕЕ ДАВЛЕНИЕ</span>
+        <strong id="modal-pressure">61 – 81 атм</strong>
+      </div>
+    </div>
+    <p class="modal-fact" id="modal-fact"></p>
+  </aside>
+
+  <!-- ОСНОВНОЙ СЕМАНТИЧЕСКИЙ ДОКУМЕНТ (1200VH) -->
+  <main class="voyage-main" id="voyage-main">
+
+    <!-- СЦЕНА 1: ПОВЕРХНОСТЬ (HERO) -->
+    <section class="zone-section zone-hero is-inview" id="sec-surface" style="top: 0vh; height: 100vh;" data-zone-index="0">
+      <div class="hero-waterline-box">
+        <p class="hero-overline">11°21′ С.Ш. 142°12′ В.Д. · ТИХИЙ ОКЕАН · БАТИСКАФ «АРГОН-IV»</p>
+        <h1 class="hero-title" id="hero-title-dom">ПОД ДАВЛЕНИЕМ</h1>
+        <p class="hero-subtitle">ВЕРТИКАЛЬНАЯ ЭКСПЕДИЦИЯ НА ДНО МАРИАНСКОЙ ВПАДИНЫ · 10 935 МЕТРОВ</p>
+      </div>
+      <div class="scroll-cue">
+        <span>ЛИСТАЙТЕ, ЧТОБЫ ПОГРУЗИТЬСЯ</span>
+        <div class="scroll-cue-line"></div>
+      </div>
+    </section>
+
+    <!-- СЦЕНА 3: ЭПИПЕЛАГИАЛЬ (0 - 200 М) -->
+    <section class="zone-section" id="sec-epipelagic" style="top: 120vh; height: 140vh;" data-zone-index="1">
+      <article class="zone-content">
+        <div class="zone-tag">01 // ЭПИПЕЛАГИАЛЬ · 0 – 200 М</div>
+        <h2 class="pressure-heading">ФОТИЧЕСКАЯ ЗОНА</h2>
+        <p class="zone-body">
+          <span class="line-mask"><span class="line-inner">Первые двести метров океана поглощают почти всю тепловую энергию</span></span>
+          <span class="line-mask"><span class="line-inner">солнечного спектра. Вода здесь пронизана каустическими лучами,</span></span>
+          <span class="line-mask"><span class="line-inner">а плотные косяки ставриды движутся как единый вычислительный организм,</span></span>
+          <span class="line-mask"><span class="line-inner">мгновенно перестраивая геометрию стаи при приближении корпуса.</span></span>
+        </p>
+        <div class="zone-data-strip">
+          <span>ФОТОСИНТЕЗ: <strong>АКТИВЕН</strong></span>
+          <span>ГРАДИЕНТ ДАВЛЕНИЯ: <strong>+1 АТМ КАЖДЫЕ 10 М</strong></span>
+          <span>ОБЪЕКТЫ: <strong>КОСЯК СТАВРИДЫ (НАВЕДИТЕ КУРСОР)</strong></span>
+        </div>
+      </article>
+    </section>
+
+    <!-- СЦЕНА 4: МЕЗОПЕЛАГИАЛЬ (200 - 1000 М) -->
+    <section class="zone-section align-right" id="sec-mesopelagic" style="top: 295vh; height: 185vh;" data-zone-index="2">
+      <article class="zone-content">
+        <div class="zone-tag">02 // МЕЗОПЕЛАГИАЛЬ · 200 – 1 000 М</div>
+        <h2 class="pressure-heading">СУМЕРЕЧНЫЙ ПОЯС</h2>
+        <p class="zone-body">
+          <span class="line-mask"><span class="line-inner">Ниже двухсот метров красный и оранжевый спектры полностью исчезают.</span></span>
+          <span class="line-mask"><span class="line-inner">Батискаф проходит резкий термоклин: температура за бортом падает</span></span>
+          <span class="line-mask"><span class="line-inner">с двадцати восьми до четырех градусов Цельсия. Из сине-стальной мглы</span></span>
+          <span class="line-mask"><span class="line-inner">выплывают медузы Атолла, рои миктофид и бочкоглаз с прозрачным черепом.</span></span>
+        </p>
+        <div class="zone-data-strip">
+          <span>ЯВЛЕНИЕ: <strong>ТЕРМОКЛИН И МОРСКОЙ СНЕГ</strong></span>
+          <span>ВИДИМОСТЬ: <strong>УГАСАНИЕ СОЛНЕЧНЫХ ЛУЧЕЙ</strong></span>
+          <span>ФАУНА: <strong>КЛИКНИТЕ ПО СУЩЕСТВУ ДЛЯ ДОСЬЕ</strong></span>
+        </div>
+      </article>
+    </section>
+
+    <!-- СЦЕНА 5: БАТИПЕЛАГИАЛЬ (1000 - 4000 М) -->
+    <section class="zone-section" id="sec-bathypelagic" style="top: 515vh; height: 205vh;" data-zone-index="3">
+      <article class="zone-content">
+        <div class="zone-tag">03 // БАТИПЕЛАГИАЛЬ · 1 000 – 4 000 М</div>
+        <h2 class="pressure-heading">ПОЛУНОЧНАЯ ТЬМА</h2>
+        <p class="zone-body">
+          <span class="line-mask"><span class="line-inner">Отметка тысяча метров отсекает последний фотон солнечного света.</span></span>
+          <span class="line-mask"><span class="line-inner">Внешнее давление превышает сто атмосфер. Единственный свет здесь —</span></span>
+          <span class="line-mask"><span class="line-inner">биолюминесцентные ловушки хищников и теплый галогенный луч «Аргона-IV».</span></span>
+          <span class="line-mask"><span class="line-inner">Наведите прожектор на блуждающий огонек во тьме или на тень кальмара.</span></span>
+        </p>
+        <div class="zone-hint-pill">
+          <span>ПРОЖЕКТОР АКТИВЕН: ОСВЕЩАЙТЕ ТЕМНОТУ КУРСОРОМ ИЛИ КАСАНИЕМ</span>
+        </div>
+      </article>
+    </section>
+
+    <!-- СЦЕНА 6: АБИССОПЕЛАГИАЛЬ (4000 - 6000 М) -->
+    <section class="zone-section align-right" id="sec-abyssopelagic" style="top: 745vh; height: 155vh;" data-zone-index="4">
+      <article class="zone-content">
+        <div class="zone-tag">04 // АБИССОПЕЛАГИАЛЬ · 4 000 – 6 000 М</div>
+        <h2 class="pressure-heading">АБИССАЛЬНАЯ РАВНИНА</h2>
+        <p class="zone-body">
+          <span class="line-mask"><span class="line-inner">Гидростатическое давление достигает шестисот килограммов на каждый</span></span>
+          <span class="line-mask"><span class="line-inner">квадратный сантиметр обшивки. В ледяном безмолвии парит осьминог-думбо,</span></span>
+          <span class="line-mask"><span class="line-inner">лишенный чернильного мешка за ненадобностью в вечной ночи. Титановая</span></span>
+          <span class="line-mask"><span class="line-inner">гондола батискафа начинает отвечать на сжатие глухими акустическими стонами.</span></span>
+        </p>
+        <div class="zone-data-strip">
+          <span>СЖАТИЕ СФЕРЫ: <strong>УПРУГАЯ ДЕФОРМАЦИЯ 1.8 ММ</strong></span>
+          <span>ТЕМПЕРАТУРА ВОДЫ: <strong>+1.9 °C</strong></span>
+        </div>
+      </article>
+    </section>
+
+    <!-- СЦЕНА 7: ХАДОПЕЛАГИАЛЬ (6000 - 10935 М) -->
+    <section class="zone-section" id="sec-hadopelagic" style="top: 925vh; height: 155vh;" data-zone-index="5">
+      <article class="zone-content">
+        <div class="zone-tag">05 // ХАДОПЕЛАГИАЛЬ · 6 000 – 10 935 М</div>
+        <h2 class="pressure-heading">УЩЕЛЬЕ ХАДАЛИ</h2>
+        <p class="zone-body">
+          <span class="line-mask"><span class="line-inner">Аппарат входит в узкий тектонический желоб на стыке Тихоокеанской</span></span>
+          <span class="line-mask"><span class="line-inner">и Филиппинской плит. На глубине восьми километров вдоль базальтовых</span></span>
+          <span class="line-mask"><span class="line-inner">сводов скользит полупрозрачный марианский улиточник — позвоночное,</span></span>
+          <span class="line-mask"><span class="line-inner">чьи клеточные мембраны удерживаются от разрушения молекулами ТМАО.</span></span>
+        </p>
+        <div class="zone-hint-pill">
+          <span>КЛИКНИТЕ В ЛЮБОЙ ТОЧКЕ ЭКРАНА ДЛЯ ИМПУЛЬСА ГИДРОЛОКАТОРА</span>
+        </div>
+      </article>
+    </section>
+
+    <!-- СЦЕНА 8: ДНО (БЕЗДНА ЧЕЛЛЕНДЖЕРА - 10935 М) -->
+    <section class="zone-section" id="sec-bottom" style="top: 1095vh; height: 105vh;" data-zone-index="6">
+      <article class="zone-content">
+        <div class="zone-tag">06 // БЕЗДНА ЧЕЛЛЕНДЖЕРА · 10 935 М</div>
+        <h2 class="pressure-heading" id="bottom-heading">ТОЧКА КАСАНИЯ</h2>
+        <p class="zone-body">
+          <span class="line-mask"><span class="line-inner">Лыжи «Аргона-IV» ложатся в светлый диатомовый ил на отметке 10 935 метров.</span></span>
+          <span class="line-mask"><span class="line-inner">Столб воды давит с силой 1 094 атмосферы — свыше одной тонны на квадратный</span></span>
+          <span class="line-mask"><span class="line-inner">сантиметр. Даже здесь, в луче прожектора, кипит жизнь: бокоплавы</span></span>
+          <span class="line-mask"><span class="line-inner">Hirondellea gigas в алюминиевой броне перерабатывают осевшую древесину.</span></span>
+        </p>
+        <div class="zone-data-strip">
+          <span>СТАТУС МИССИИ: <strong>КАСАНИЕ ДНА ПОДТВЕРЖДЕНО</strong></span>
+          <span>ДАВЛЕНИЕ: <strong>1 094.5 АТМ (110.9 МПА)</strong></span>
+        </div>
+        <div class="ascent-wrap">
+          <button type="button" class="btn-resurface magnetic-el" id="btn-resurface">
+            СБРОСИТЬ БАЛЛАСТ · ВСПЛЫТЬ (6 С)
+          </button>
+        </div>
+      </article>
+    </section>
+
+  </main>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    /* ==========================================================================
+       1. НАУЧНАЯ БАЗА ДАННЫХ СУЩЕСТВ (РЕАЛЬНЫЕ ФАКТЫ)
+       ========================================================================== */
+    const CREATURES_DB = [
+      {
+        id: 'jack_mackerel',
+        nameRu: 'Перуанская ставрида (косяк)',
+        nameLat: 'Trachurus murphyi',
+        depthRange: '10 – 180 м',
+        pressureRange: '2 – 19 атм',
+        minDepth: 15,
+        maxDepth: 205,
+        screenAnchor: { x: 0.66, y: 0.48 },
+        fact: 'Рыбы в пелагическом косяке синхронизируют рывки с помощью боковой линии — гидродинамического органа чувств, улавливающего малейшие перепады давления от взмаха хвостового плавника соседей за доли секунды.'
+      },
+      {
+        id: 'atolla',
+        nameRu: 'Коронатная медуза Атолла',
+        nameLat: 'Atolla wyvillei',
+        depthRange: '300 – 1 000 м',
+        pressureRange: '31 – 101 атм',
+        minDepth: 210,
+        maxDepth: 960,
+        screenAnchor: { x: 0.28, y: 0.42 },
+        fact: 'При нападении хищника медуза Атолла запускает бегущую кольцевую вспышку синей биолюминесценции («эффект охранной сигнализации»), чтобы привлечь более крупного хищника, который атакует нападающего.'
+      },
+      {
+        id: 'barreleye',
+        nameRu: 'Малоротая макропинна (Бочкоглаз)',
+        nameLat: 'Macropinna microstoma',
+        depthRange: '550 – 850 м',
+        pressureRange: '56 – 86 атм',
+        minDepth: 420,
+        maxDepth: 980,
+        screenAnchor: { x: 0.42, y: 0.66 },
+        fact: 'Лобная часть черепа макропинны абсолютно прозрачна и заполнена жидкостью: внутри нее расположены ярко-зеленые трубчатые глаза, способные поворачиваться вертикально вверх для высматривания силуэтов добычи и вперед при захвате пищи.'
+      },
+      {
+        id: 'myctophids',
+        nameRu: 'Светящиеся анчоусы (Миктофиды)',
+        nameLat: 'Myctophidae spp.',
+        depthRange: '250 – 1 000 м',
+        pressureRange: '26 – 101 атм',
+        minDepth: 230,
+        maxDepth: 950,
+        screenAnchor: { x: 0.18, y: 0.72 },
+        fact: 'Брюшные фотофоры миктофид излучают слабый голубой свет, точно совпадающий по яркости с остаточным сиянием неба сверху (контриллюминация), что полностью стирает силуэт рыбы для хищников, смотрящих снизу.'
+      },
+      {
+        id: 'anglerfish',
+        nameRu: 'Черный удильщик Джонсона',
+        nameLat: 'Melanocetus johnsonii',
+        depthRange: '1 200 – 3 500 м',
+        pressureRange: '121 – 351 атм',
+        minDepth: 1100,
+        maxDepth: 3850,
+        screenAnchor: { x: 0.68, y: 0.44 },
+        fact: 'Свечение приманки (эски) на голове самки создается не самой рыбой, а колонией симбиотических бактерий рода Enterovibrio, получающих от хозяина питательные вещества в обмен на холодный биолюминесцентный свет.'
+      },
+      {
+        id: 'vampire_squid',
+        nameRu: 'Адский вампир',
+        nameLat: 'Vampyroteuthis infernalis',
+        depthRange: '1 100 – 3 200 м',
+        pressureRange: '111 – 321 атм',
+        minDepth: 1200,
+        maxDepth: 3900,
+        screenAnchor: { x: 0.76, y: 0.68 },
+        fact: 'Вопреки грозному названию, адский вампир не является хищником: он питается только оседающим морским снегом, а при опасности выворачивает перепончатый плащ с мягкими шипами-циррами наизнанку, закрывая мантию.'
+      },
+      {
+        id: 'dumbo',
+        nameRu: 'Осьминог-думбо',
+        nameLat: 'Grimpoteuthis bathynectes',
+        depthRange: '4 000 – 6 000 м',
+        pressureRange: '401 – 601 атм',
+        minDepth: 4050,
+        maxDepth: 5950,
+        screenAnchor: { x: 0.30, y: 0.52 },
+        fact: 'В отличие от мелководных осьминогов, представители рода Grimpoteuthis полностью утратили чернильный мешок и радулу для дробления панцирей: они заглатывают донных ракообразных и полихет целиком.'
+      },
+      {
+        id: 'snailfish',
+        nameRu: 'Марианский морской слизень (Улиточник)',
+        nameLat: 'Pseudoliparis swirei',
+        depthRange: '6 800 – 8 336 м',
+        pressureRange: '681 – 834 атм',
+        minDepth: 6300,
+        maxDepth: 9600,
+        screenAnchor: { x: 0.68, y: 0.54 },
+        fact: 'У марианского улиточника нет плавательного пузыря, а череп остается не до конца окостеневшим и открытым, чтобы внутреннее давление тканей мгновенно уравновешивалось с внешним без разрушения костей.'
+      },
+      {
+        id: 'amphipod',
+        nameRu: 'Гигантская бездновая амфипода',
+        nameLat: 'Hirondellea gigas',
+        depthRange: '10 000 – 10 935 м',
+        pressureRange: '1 001 – 1 094.5 атм',
+        minDepth: 10100,
+        maxDepth: 10935,
+        screenAnchor: { x: 0.65, y: 0.72 },
+        fact: 'Чтобы панцирь из карбоната кальция не растворился под экстремальным давлением на дне впадины, амфипода Hirondellea gigas извлекает ионы алюминия из придонного ила и покрывает тело защитным гелем гидроксида алюминия.'
+      }
+    ];
+
+    /* ==========================================================================
+       2. ГЛОБАЛЬНОЕ СОСТОЯНИЕ И КУСОЧНО-ЛИНЕЙНЫЙ МАППИНГ ГЛУБИНЫ
+       ========================================================================== */
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const STATE = {
+      targetScroll: 0,
+      currentScroll: 0,
+      maxScroll: 1,
+      progress: 0,          // 0..1
+      velocity: 0,          // пикселей/кадр
+      normVelocity: 0,      // -1..1
+      direction: 1,
+      depth: 0,             // 0..10935 м
+      pressure: 1.0,        // атм
+      temperature: 28.0,    // °C
+      sunlight: 100.0,      // %
+      zoneIndex: 0,
+      mouseX: window.innerWidth * 0.5,
+      mouseY: window.innerHeight * 0.5,
+      smoothMouseX: window.innerWidth * 0.5,
+      smoothMouseY: window.innerHeight * 0.5,
+      isResurfacing: false,
+      touchdownTriggered: false,
+      touchdownSilenceActive: false,
+      touchdownTimer: 0,
+      bottomFontExhale: 0,  // 0..1 после касания дна
+      siltCloudAlpha: 0,
+      siltCloudTime: 99,
+      sonarWaveActive: false,
+      sonarWaveTime: 10,
+      sonarOrigin: { x: 0.5, y: 0.5 },
+      surfaceSplashTime: 10,
+      qualityScale: 1.0,
+      activeSnowCount: 5400,
+      isTabVisible: true,
+      hoveredCreatureId: null
+    };
+
+    const ZONE_NAMES = [
+      'ЗОНА 00 : ПОВЕРХНОСТЬ ОКЕАНА',
+      'ЗОНА 01 : ЭПИПЕЛАГИАЛЬ (0–200 М)',
+      'ЗОНА 02 : МЕЗОПЕЛАГИАЛЬ (200–1000 М)',
+      'ЗОНА 03 : БАТИПЕЛАГИАЛЬ (1000–4000 М)',
+      'ЗОНА 04 : АБИССОПЕЛАГИАЛЬ (4000–6000 М)',
+      'ЗОНА 05 : ХАДОПЕЛАГИАЛЬ (6000–10935 М)',
+      'ЗОНА 06 : БЕЗДНА ЧЕЛЛЕНДЖЕРА (10935 М)'
+    ];
+
+    // Кусочно-линейная таблица отображения прогресса скролла (0..1) в метры (0..10935)
+    const DEPTH_STOPS = [
+      { t: 0.00, d: 0 },
+      { t: 0.07, d: 8 },
+      { t: 0.22, d: 200 },
+      { t: 0.40, d: 1000 },
+      { t: 0.60, d: 4000 },
+      { t: 0.74, d: 6000 },
+      { t: 0.91, d: 10935 },
+      { t: 1.00, d: 10935 }
+    ];
+
+    function progressToDepth(t) {
+      const clamped = Math.max(0, Math.min(1, t));
+      for (let i = 0; i < DEPTH_STOPS.length - 1; i++) {
+        const a = DEPTH_STOPS[i];
+        const b = DEPTH_STOPS[i + 1];
+        if (clamped >= a.t && clamped <= b.t) {
+          const local = (b.t - a.t) > 0 ? (clamped - a.t) / (b.t - a.t) : 0;
+          return a.d + (b.d - a.d) * local;
+        }
+      }
+      return 10935;
+    }
+
+    function depthToProgress(depth) {
+      const d = Math.max(0, Math.min(10935, depth));
+      for (let i = 0; i < DEPTH_STOPS.length - 1; i++) {
+        const a = DEPTH_STOPS[i];
+        const b = DEPTH_STOPS[i + 1];
+        if (d >= a.d && d <= b.d) {
+          const span = b.d - a.d;
+          const local = span > 0 ? (d - a.d) / span : 0;
+          return a.t + (b.t - a.t) * local;
+        }
+      }
+      return 0.92;
+    }
+
+    function computeTemperature(depth) {
+      // Реалистичный профиль с резким термоклином
+      if (depth <= 60) {
+        return 28.0 - (depth / 60) * 2.2;
+      } else if (depth <= 1000) {
+        const k = (depth - 60) / 940;
+        // Экспоненциальный спад в термоклине от 25.8 до 4.0 °C
+        return 4.0 + 21.8 * Math.pow(1 - k, 2.35);
+      } else if (depth <= 4000) {
+        const k = (depth - 1000) / 3000;
+        return 4.0 - k * 2.1;
+      } else {
+        const k = (depth - 4000) / 6935;
+        return 1.9 - k * 0.5;
+      }
+    }
+
+    function computeSunlight(depth) {
+      if (depth <= 0.5) return 100.0;
+      if (depth >= 1000) return 0.0;
+      // Экспоненциальное затухание закона Бугера-Ламберта
+      const val = 100 * Math.exp(-depth * 0.0085) * (1 - depth / 1000);
+      return Math.max(0, val);
+    }
+
+    function getZoneIndexFromDepth(depth, progress) {
+      if (progress < 0.065) return 0;
+      if (depth < 200) return 1;
+      if (depth < 1000) return 2;
+      if (depth < 4000) return 3;
+      if (depth < 6000) return 4;
+      if (depth < 10920) return 5;
+      return 6;
+    }
+
+    /* ==========================================================================
+       3. ПРОЦЕДУРНЫЙ ЗВУКОВОЙ ДВИЖОК (WEB AUDIO API)
+       ========================================================================== */
+    class ProceduralAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = false;
+        this.masterGain = null;
+        this.droneOsc1 = null;
+        this.droneOsc2 = null;
+        this.droneFilter = null;
+        this.droneGain = null;
+        this.creakCooldown = 0;
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = 0.0001;
+        this.masterGain.connect(this.ctx.destination);
+
+        // Низкий эмбиент-дрон из двух осцилляторов через фильтр низких частот
+        this.droneFilter = this.ctx.createBiquadFilter();
+        this.droneFilter.type = 'lowpass';
+        this.droneFilter.frequency.value = 380;
+        this.droneFilter.Q.value = 2.4;
+
+        this.droneGain = this.ctx.createGain();
+        this.droneGain.gain.value = 0.28;
+
+        this.droneOsc1 = this.ctx.createOscillator();
+        this.droneOsc1.type = 'sawtooth';
+        this.droneOsc1.frequency.value = 62;
+
+        this.droneOsc2 = this.ctx.createOscillator();
+        this.droneOsc2.type = 'triangle';
+        this.droneOsc2.frequency.value = 31.2;
+
+        this.droneOsc1.connect(this.droneFilter);
+        this.droneOsc2.connect(this.droneFilter);
+        this.droneFilter.connect(this.droneGain);
+        this.droneGain.connect(this.masterGain);
+
+        this.droneOsc1.start();
+        this.droneOsc2.start();
+      }
+
+      toggle() {
+        this.init();
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        this.enabled = !this.enabled;
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setTargetAtTime(this.enabled ? 0.65 : 0.0001, now, 0.25);
+        return this.enabled;
+      }
+
+      setTabVisibility(visible) {
+        if (!this.ctx || !this.enabled) return;
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.setTargetAtTime(visible ? 0.65 : 0.0001, now, 0.15);
+      }
+
+      update(depth, dt, isSilence) {
+        if (!this.ctx || !this.enabled) return;
+        const now = this.ctx.currentTime;
+
+        if (isSilence) {
+          this.droneGain.gain.setTargetAtTime(0.0001, now, 0.12);
+          return;
+        } else {
+          this.droneGain.gain.setTargetAtTime(0.28, now, 0.35);
+        }
+
+        // С глубиной падает частота среза фильтра и высота дрона
+        const normD = Math.min(1, depth / 10935);
+        const targetCutoff = 380 * Math.pow(1 - normD * 0.86, 1.8) + 38;
+        const targetPitch = 62 - normD * 24;
+
+        this.droneFilter.frequency.setTargetAtTime(targetCutoff, now, 0.1);
+        this.droneOsc1.frequency.setTargetAtTime(targetPitch, now, 0.1);
+        this.droneOsc2.frequency.setTargetAtTime(targetPitch * 0.502, now, 0.1);
+
+        // Редкие синтезированные скрипы корпуса после 6000 м
+        this.creakCooldown -= dt;
+        if (depth > 6000 && this.creakCooldown <= 0 && Math.random() < 0.015) {
+          this.triggerHullCreak();
+          this.creakCooldown = 5.5 + Math.random() * 5.0;
+        }
+      }
+
+      triggerHullCreak() {
+        if (!this.ctx || !this.enabled || STATE.touchdownSilenceActive) return;
+        const now = this.ctx.currentTime;
+        const dur = 1.6 + Math.random() * 1.1;
+
+        const carrier = this.ctx.createOscillator();
+        const mod = this.ctx.createOscillator();
+        const modGain = this.ctx.createGain();
+        const bandpass = this.ctx.createBiquadFilter();
+        const env = this.ctx.createGain();
+
+        const baseFreq = 95 + Math.random() * 55;
+        carrier.type = 'sawtooth';
+        carrier.frequency.setValueAtTime(baseFreq, now);
+        carrier.frequency.exponentialRampToValueAtTime(baseFreq * 0.72, now + dur);
+
+        mod.type = 'sine';
+        mod.frequency.setValueAtTime(18 + Math.random() * 12, now);
+        modGain.gain.setValueAtTime(40, now);
+
+        bandpass.type = 'bandpass';
+        bandpass.frequency.setValueAtTime(baseFreq * 2.4, now);
+        bandpass.Q.value = 6.5;
+
+        env.gain.setValueAtTime(0.0001, now);
+        env.gain.linearRampToValueAtTime(0.11, now + 0.35);
+        env.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+        mod.connect(modGain);
+        modGain.connect(carrier.frequency);
+        carrier.connect(bandpass);
+        bandpass.connect(env);
+        env.connect(this.masterGain);
+
+        carrier.start(now);
+        mod.start(now);
+        carrier.stop(now + dur + 0.05);
+        mod.stop(now + dur + 0.05);
+      }
+
+      triggerSonarPing() {
+        if (!this.ctx || !this.enabled) return;
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        const env = this.ctx.createGain();
+        const delay = this.ctx.createDelay();
+        const feedback = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1760, now);
+        osc.frequency.exponentialRampToValueAtTime(1710, now + 0.9);
+
+        env.gain.setValueAtTime(0.0001, now);
+        env.gain.linearRampToValueAtTime(0.18, now + 0.015);
+        env.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+
+        delay.delayTime.value = 0.28;
+        feedback.gain.value = 0.38;
+
+        osc.connect(env);
+        env.connect(this.masterGain);
+        env.connect(delay);
+        delay.connect(feedback);
+        feedback.connect(delay);
+        delay.connect(this.masterGain);
+
+        osc.start(now);
+        osc.stop(now + 1.5);
+      }
+
+      triggerSplash() {
+        if (!this.ctx || !this.enabled) return;
+        const now = this.ctx.currentTime;
+        const bufferSize = this.ctx.sampleRate * 0.7;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.2));
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(650, now);
+        filter.frequency.exponentialRampToValueAtTime(190, now + 0.65);
+        filter.Q.value = 1.8;
+
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(0.0001, now);
+        env.gain.linearRampToValueAtTime(0.22, now + 0.04);
+        env.gain.exponentialRampToValueAtTime(0.0001, now + 0.68);
+
+        noise.connect(filter);
+        filter.connect(env);
+        env.connect(this.masterGain);
+        noise.start(now);
+      }
+    }
+
+    const audioEngine = new ProceduralAudioEngine();
+
+    /* ==========================================================================
+       4. WEBGL КОНВЕЙЕР (THREE.JS): ШЕЙДЕРЫ ВАТЕРЛИНИИ, СНЕГА И СОНАРА
+       ========================================================================== */
+    const webglCanvas = document.getElementById('webgl-canvas');
+    const renderer = new THREE.WebGLRenderer({
+      canvas: webglCanvas,
+      antialias: false,
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, 0, 28);
+
+    // Генерация текстуры заголовка «ПОД ДАВЛЕНИЕМ» для настоящего шейдерного преломления на ватерлинии
+    const titleTexCanvas = document.createElement('canvas');
+    const titleTexCtx = titleTexCanvas.getContext('2d');
+    const titleTexture = new THREE.CanvasTexture(titleTexCanvas);
+    titleTexture.minFilter = THREE.LinearFilter;
+    titleTexture.magFilter = THREE.LinearFilter;
+
+    function updateHeroTitleTexture() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      titleTexCanvas.width = Math.floor(window.innerWidth * dpr);
+      titleTexCanvas.height = Math.floor(window.innerHeight * dpr);
+      titleTexCtx.clearRect(0, 0, titleTexCanvas.width, titleTexCanvas.height);
+
+      const heroDom = document.getElementById('hero-title-dom');
+      if (!heroDom) return;
+      const rect = heroDom.getBoundingClientRect();
+      const computed = window.getComputedStyle(heroDom);
+      const fontSize = parseFloat(computed.fontSize) * dpr;
+
+      titleTexCtx.save();
+      titleTexCtx.font = `750 ${fontSize}px "Roboto Flex", sans-serif`;
+      titleTexCtx.textAlign = 'center';
+      titleTexCtx.textBaseline = 'middle';
+      titleTexCtx.fillStyle = '#FFFFFF';
+      if ('letterSpacing' in titleTexCtx) {
+        titleTexCtx.letterSpacing = `${fontSize * 0.06}px`;
+      }
+      const centerX = (rect.left + rect.width * 0.5) * dpr;
+      const centerY = (window.innerHeight * 0.5) * dpr;
+      titleTexCtx.fillText('ПОД ДАВЛЕНИЕМ', centerX, centerY);
+      titleTexCtx.restore();
+      titleTexture.needsUpdate = true;
+    }
+
+    // Полноэкранный шейдер среды (Небо, Ватерлиния с преломлением заголовка, Каустики, Лучи, Водяная линза, Прожектор)
+    const bgUniforms = {
+      uTime: { value: 0 },
+      uDepth: { value: 0 },
+      uProgress: { value: 0 },
+      uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+      uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+      uTitleTex: { value: titleTexture },
+      uSplashLens: { value: 0 },
+      uSonarTime: { value: 10.0 },
+      uSonarOrigin: { value: new THREE.Vector2(0.5, 0.5) }
+    };
+
+    const bgMaterial = new THREE.ShaderMaterial({
+      uniforms: bgUniforms,
+      depthWrite: false,
+      depthTest: false,
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position.xy, 0.0, 1.0);
+        }
+      `,
+      fragmentShader: `
+        precision highp float;
+        varying vec2 vUv;
+        uniform float uTime;
+        uniform float uDepth;
+        uniform float uProgress;
+        uniform vec2 uResolution;
+        uniform vec2 uMouse;
+        uniform sampler2D uTitleTex;
+        uniform float uSplashLens;
+        uniform float uSonarTime;
+        uniform vec2 uSonarOrigin;
+
+        // Процедурный шум для каустик и солнечных лучей
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float a = hash(i);
+          float b = hash(i + vec2(1.0, 0.0));
+          float c = hash(i + vec2(0.0, 1.0));
+          float d = hash(i + vec2(1.0, 1.0));
+          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+
+        float causticsPattern(vec2 uv, float t) {
+          vec2 p = uv * 6.5;
+          float n1 = noise(p + vec2(t * 0.35, -t * 0.22));
+          float n2 = noise(p * 1.4 - vec2(t * 0.28, t * 0.31));
+          float c = 1.0 - abs(n1 - n2) * 3.2;
+          return pow(clamp(c, 0.0, 1.0), 3.0);
+        }
+
+        void main() {
+          vec2 uv = vUv;
+          float aspect = uResolution.x / max(uResolution.y, 1.0);
+
+          // Водяная линза при прохождении сквозь поверхность (Сцена 2)
+          if (uSplashLens > 0.001) {
+            vec2 center = uv - 0.5;
+            float r = length(center);
+            float lensWave = sin(r * 22.0 - uTime * 9.0) * 0.028 * uSplashLens;
+            uv += normalize(center + 0.0001) * lensWave;
+          }
+
+          // Сдвиг ватерлинии вверх по мере начала погружения (0..22 м)
+          float surfaceOffset = clamp(uProgress / 0.075, 0.0, 1.25);
+          float waveBase = 0.5 + surfaceOffset * 0.65;
+          float wave = sin(uv.x * 9.0 + uTime * 1.65) * 0.009
+                     + sin(uv.x * 21.0 - uTime * 2.4) * 0.0035;
+          float waterlineY = waveBase + wave;
+
+          // Непрерывная интерполяция подводной палитры по глубине:
+          // 0 м: #7FD8E8 -> #1B8FB0
+          // 200 м: #0B4F6C
+          // 1000 м: #04162B
+          // 4000+ м: #010409
+          vec3 c0Top = vec3(0.498, 0.847, 0.910); // #7FD8E8
+          vec3 c0Bot = vec3(0.106, 0.561, 0.690); // #1B8FB0
+          vec3 c200  = vec3(0.043, 0.310, 0.424); // #0B4F6C
+          vec3 c1000 = vec3(0.016, 0.086, 0.169); // #04162B
+          vec3 c4000 = vec3(0.004, 0.016, 0.035); // #010409
+
+          vec3 waterTop;
+          vec3 waterBot;
+          if (uDepth < 200.0) {
+            float k = clamp(uDepth / 200.0, 0.0, 1.0);
+            waterTop = mix(c0Top, c200, k);
+            waterBot = mix(c0Bot, mix(c200, c1000, 0.35), k);
+          } else if (uDepth < 1000.0) {
+            float k = clamp((uDepth - 200.0) / 800.0, 0.0, 1.0);
+            waterTop = mix(c200, c1000, k);
+            waterBot = mix(mix(c200, c1000, 0.35), c1000 * 0.75, k);
+          } else if (uDepth < 4000.0) {
+            float k = clamp((uDepth - 1000.0) / 3000.0, 0.0, 1.0);
+            waterTop = mix(c1000, c4000, k);
+            waterBot = mix(c1000 * 0.75, c4000, k);
+          } else {
+            waterTop = c4000;
+            waterBot = c4000;
+          }
+
+          vec3 waterColor = mix(waterBot, waterTop, clamp(uv.y, 0.0, 1.0));
+
+          // Каустики и солнечные лучи (God Rays) в эпипелагиали (0-250 м)
+          float sunVis = clamp(1.0 - uDepth / 340.0, 0.0, 1.0);
+          if (sunVis > 0.001) {
+            float rayCoord = (uv.x - 0.5) * (1.5 - uv.y * 0.65);
+            float rays = noise(vec2(rayCoord * 12.0 + uTime * 0.12, uv.y * 0.8));
+            rays += 0.5 * noise(vec2(rayCoord * 25.0 - uTime * 0.18, uv.y * 1.4));
+            rays = pow(clamp(rays * 0.72, 0.0, 1.0), 2.4) * pow(uv.y, 1.3);
+            waterColor += vec3(0.32, 0.78, 0.88) * rays * sunVis * 0.42;
+
+            float caust = causticsPattern(vec2(uv.x * aspect, uv.y), uTime);
+            waterColor += vec3(0.45, 0.92, 1.0) * caust * sunVis * 0.22;
+          }
+
+          // Теплый прожектор батискафа (#FFE7B8) глубже 600 м
+          float darkFactor = smoothstep(500.0, 1200.0, uDepth);
+          if (darkFactor > 0.01) {
+            vec2 pUv = vec2(uv.x * aspect, uv.y);
+            vec2 mUv = vec2(uMouse.x * aspect, 1.0 - uMouse.y);
+            float dist = distance(pUv, mUv);
+            float spot = exp(-dist * dist * 10.5);
+            float halo = exp(-dist * 2.8) * 0.25;
+            vec3 beamCol = vec3(1.0, 0.906, 0.722); // #FFE7B8
+            waterColor += beamCol * (spot * 0.22 + halo * 0.14) * darkFactor;
+          }
+
+          // Сонарная кольцевая волна в хадали
+          if (uSonarTime < 2.5) {
+            vec2 pUv = vec2(uv.x * aspect, uv.y);
+            vec2 sUv = vec2(uSonarOrigin.x * aspect, 1.0 - uSonarOrigin.y);
+            float d = distance(pUv, sUv);
+            float radius = uSonarTime * 0.85;
+            float ring = exp(-pow((d - radius) * 28.0, 2.0)) * (1.0 - uSonarTime / 2.5);
+            waterColor += vec3(0.298, 0.949, 1.0) * ring * 0.55;
+          }
+
+          // Рассветное небо и солнце над ватерлинией (Сцена 1: Hero)
+          vec3 finalColor = waterColor;
+          if (uv.y > waterlineY) {
+            float skyH = clamp((uv.y - waterlineY) / max(1.0 - waterlineY, 0.001), 0.0, 1.0);
+            vec3 horizonCol = vec3(0.98, 0.84, 0.72);
+            vec3 zenithCol  = vec3(0.56, 0.82, 0.93);
+            vec3 skyCol = mix(horizonCol, zenithCol, pow(skyH, 0.65));
+
+            // Солнечный диск над горизонтом
+            vec2 sunPos = vec2(0.5 * aspect, waterlineY + 0.13);
+            vec2 curPos = vec2(uv.x * aspect, uv.y);
+            float sunDist = distance(curPos, sunPos);
+            float sunDisk = smoothstep(0.055, 0.038, sunDist);
+            float sunGlow = exp(-sunDist * 5.5) * 0.55;
+            skyCol += vec3(1.0, 0.93, 0.78) * (sunDisk * 0.85 + sunGlow);
+
+            finalColor = skyCol;
+          } else {
+            // Светящийся мениск на самой линии воды
+            float meniscus = exp(-abs(uv.y - waterlineY) * 190.0);
+            finalColor += vec3(0.82, 0.98, 1.0) * meniscus * 0.65;
+          }
+
+          // НАСТОЯЩЕЕ ШЕЙДЕРНОЕ ПРЕЛОМЛЕНИЕ ЗАГОЛОВКА «ПОД ДАВЛЕНИЕМ» НА ВАТЕРЛИНИИ
+          if (uProgress < 0.085) {
+            float heroAlpha = 1.0 - smoothstep(0.045, 0.08, uProgress);
+            vec2 texUv = vec2(uv.x, 1.0 - (uv.y - surfaceOffset * 0.65));
+
+            if (uv.y >= waterlineY) {
+              // Верхняя половина букв над водой — идеально четкая
+              if (texUv.y >= 0.0 && texUv.y <= 1.0) {
+                float glyph = texture2D(uTitleTex, texUv).a;
+                vec3 topGlyphCol = vec3(0.03, 0.14, 0.22);
+                finalColor = mix(finalColor, topGlyphCol, glyph * heroAlpha);
+              }
+            } else {
+              // Нижняя половина букв под водой — преломлена по закону Снеллиуса с дисперсией и волнами
+              float depthBelowWave = waterlineY - uv.y;
+              float refractX = sin(uv.y * 55.0 + uTime * 3.8 + uv.x * 12.0) * 0.0085 * (0.4 + depthBelowWave * 4.0);
+              float refractY = cos(uv.x * 32.0 - uTime * 2.9) * 0.011 - depthBelowWave * 0.12;
+              vec2 refrUv = texUv + vec2(refractX, refractY);
+
+              if (refrUv.y >= 0.0 && refrUv.y <= 1.0) {
+                float gR = texture2D(uTitleTex, refrUv + vec2(0.0025, 0.0)).a;
+                float gG = texture2D(uTitleTex, refrUv).a;
+                float gB = texture2D(uTitleTex, refrUv - vec2(0.0025, 0.0)).a;
+                vec3 subGlyph = vec3(gR * 0.78, gG * 0.96, gB * 1.0);
+                float caustBoost = causticsPattern(vec2(uv.x * aspect, uv.y), uTime) * 0.35;
+                finalColor = mix(finalColor, subGlyph + caustBoost, max(max(gR, gG), gB) * 0.88 * heroAlpha);
+              }
+            }
+          }
+
+          gl_FragColor = vec4(finalColor, 1.0);
+        }
+      `
+    });
+
+    const bgQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMaterial);
+    bgQuad.frustumCulled = false;
+    scene.add(bgQuad);
+
+    /* ==========================================================================
+       5. МОРСКОЙ СНЕГ: 5400 ЧАСТИЦ НА GPU В 3 СЛОЯХ ПАРАЛЛАКСА + MOTION BLUR
+       ========================================================================== */
+    const MAX_SNOW = 5400;
+    const snowPositions = new Float32Array(MAX_SNOW * 3);
+    const snowLayers = new Float32Array(MAX_SNOW); // 0.35 (дальний), 0.68 (средний), 1.0 (ближний)
+    const snowSeeds = new Float32Array(MAX_SNOW);
+
+    for (let i = 0; i < MAX_SNOW; i++) {
+      snowPositions[i * 3 + 0] = (Math.random() - 0.5) * 60;
+      snowPositions[i * 3 + 1] = (Math.random() - 0.5) * 44;
+      snowPositions[i * 3 + 2] = (Math.random() - 0.5) * 18;
+      const r = Math.random();
+      snowLayers[i] = r < 0.45 ? 0.38 : (r < 0.82 ? 0.68 : 1.0);
+      snowSeeds[i] = Math.random() * 100.0;
+    }
+
+    const snowGeo = new THREE.BufferGeometry();
+    snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3));
+    snowGeo.setAttribute('aLayer', new THREE.BufferAttribute(snowLayers, 1));
+    snowGeo.setAttribute('aSeed', new THREE.BufferAttribute(snowSeeds, 1));
+
+    const snowUniforms = {
+      uTime: { value: 0 },
+      uScrollOffset: { value: 0 },
+      uVelocity: { value: 0 },
+      uDepth: { value: 0 },
+      uMouseWorld: { value: new THREE.Vector2(0, 0) },
+      uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) }
+    };
+
+    const snowMaterial = new THREE.ShaderMaterial({
+      uniforms: snowUniforms,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: `
+        attribute float aLayer;
+        attribute float aSeed;
+        uniform float uTime;
+        uniform float uScrollOffset;
+        uniform float uVelocity;
+        uniform float uDepth;
+        uniform vec2 uMouseWorld;
+        uniform float uPixelRatio;
+
+        varying float vAlpha;
+        varying float vStretch;
+        varying vec3 vColor;
+
+        void main() {
+          vec3 pos = position;
+
+          // Три слоя параллакса по вертикали + медленный дрейф
+          float parallaxShift = uScrollOffset * aLayer * 0.042;
+          pos.y = mod(pos.y + parallaxShift + uTime * 0.22 * aLayer + 22.0, 44.0) - 22.0;
+          pos.x += sin(uTime * 0.45 + aSeed) * 0.35 * aLayer;
+
+          // У поверхности морского снега нет, к 1000 м он густеет
+          float densityMask = smoothstep(35.0, 750.0, uDepth);
+          float seedVis = step(1.0 - densityMask, fract(aSeed * 0.137));
+
+          // В темноте (>1000 м) прожектор батискафа ярко высвечивает частицы
+          float distToBeam = distance(pos.xy, uMouseWorld);
+          float beamBoost = smoothstep(9.5, 0.5, distToBeam) * smoothstep(700.0, 1300.0, uDepth);
+
+          vStretch = clamp(abs(uVelocity) * aLayer * 0.38, 0.0, 7.5);
+          vAlpha = (0.14 + 0.36 * aLayer + beamBoost * 0.65) * densityMask * seedVis;
+
+          // Легкий биолюминесцентный или теплый оттенок в луче прожектора
+          vec3 baseCol = mix(vec3(0.62, 0.86, 0.96), vec3(1.0, 0.91, 0.73), beamBoost * 0.85);
+          if (fract(aSeed * 0.73) > 0.92 && uDepth > 900.0) {
+            baseCol = vec3(0.30, 0.95, 1.0); // #4CF2FF
+          }
+          vColor = baseCol;
+
+          vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+          gl_Position = projectionMatrix * mvPosition;
+
+          float baseSize = (2.2 + aLayer * 3.4) * uPixelRatio;
+          gl_PointSize = baseSize * (1.0 + vStretch * 2.4) * (24.0 / -mvPosition.z);
+        }
+      `,
+      fragmentShader: `
+        precision mediump float;
+        varying float vAlpha;
+        varying float vStretch;
+        varying vec3 vColor;
+
+        void main() {
+          if (vAlpha <= 0.005) discard;
+          vec2 p = gl_PointCoord - 0.5;
+          // Вытягивание частиц в вертикальные штрихи (motion blur по скорости скролла)
+          p.x *= (1.0 + vStretch * 2.6);
+          float d = length(p);
+          if (d > 0.5) discard;
+          float soft = smoothstep(0.5, 0.05, d);
+          gl_FragColor = vec4(vColor, soft * vAlpha);
+        }
+      `
+    });
+
+    const snowPoints = new THREE.Points(snowGeo, snowMaterial);
+    scene.add(snowPoints);
+
+    /* ==========================================================================
+       6. СТЕНЫ МАРИАНСКОЙ ВПАДИНЫ (ХАДОПЕЛАГИАЛЬ: КАРКАС + ОБЛАКО ТОЧЕК СОНАРА)
+       ========================================================================== */
+    const trenchGroup = new THREE.Group();
+    scene.add(trenchGroup);
+
+    function createTrenchWallGeometry(isRightWall) {
+      const segX = 28;
+      const segY = 64;
+      const geom = new THREE.PlaneGeometry(18, 48, segX, segY);
+      const pos = geom.attributes.position;
+      const sign = isRightWall ? 1 : -1;
+
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i);
+        const vy = pos.getY(i);
+        // Процедурный скалистый рельеф базальтовых уступов
+        const ridge = Math.sin(vy * 0.45 + vx * 0.4) * 1.8
+                    + Math.cos(vy * 1.15 - vx * 0.8) * 0.75;
+        const inwardSlope = (9.0 - vx * sign) * 0.32;
+        pos.setZ(i, ridge + inwardSlope);
+      }
+      geom.computeVertexNormals();
+      return geom;
+    }
+
+    const trenchUniforms = {
+      uTime: { value: 0 },
+      uDepth: { value: 0 },
+      uSonarTime: { value: 10.0 },
+      uSonarWorld: { value: new THREE.Vector3(0, 0, 0) },
+      uMouseWorld: { value: new THREE.Vector2(0, 0) }
+    };
+
+    const trenchShaderMat = new THREE.ShaderMaterial({
+      uniforms: trenchUniforms,
+      wireframe: true,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: `
+        varying vec3 vWorldPos;
+        uniform float uTime;
+        void main() {
+          vec3 p = position;
+          vec4 wp = modelMatrix * vec4(p, 1.0);
+          vWorldPos = wp.xyz;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+          gl_PointSize = 3.0;
+        }
+      `,
+      fragmentShader: `
+        precision mediump float;
+        varying vec3 vWorldPos;
+        uniform float uDepth;
+        uniform float uSonarTime;
+        uniform vec3 uSonarWorld;
+        uniform vec2 uMouseWorld;
+
+        void main() {
+          // Стены проявляются только в хадопелагиали (>5800 м)
+          float hadalMask = smoothstep(5600.0, 6300.0, uDepth);
+          if (hadalMask <= 0.001) discard;
+
+          // Тусклый контур от прожектора + яркая волна сонара при клике
+          float beamDist = distance(vWorldPos.xy, uMouseWorld);
+          float beamVis = smoothstep(10.0, 1.5, beamDist) * 0.14;
+
+          float sonarVis = 0.0;
+          if (uSonarTime < 2.6) {
+            float d = distance(vWorldPos.xy, uSonarWorld.xy);
+            float waveRadius = uSonarTime * 22.0;
+            float ring = exp(-pow((d - waveRadius) * 0.45, 2.0));
+            float trail = smoothstep(waveRadius, waveRadius - 12.0, d) * (1.0 - uSonarTime / 2.6);
+            sonarVis = (ring * 0.95 + trail * 0.35) * (1.0 - uSonarTime / 2.6);
+          }
+
+          float alpha = (beamVis + sonarVis + 0.025) * hadalMask;
+          if (alpha <= 0.005) discard;
+
+          vec3 col = mix(vec3(0.18, 0.55, 0.72), vec3(0.30, 0.95, 1.0), clamp(sonarVis * 1.4, 0.0, 1.0));
+          gl_FragColor = vec4(col, alpha);
+        }
+      `
+    });
+
+    const trenchPointsMat = trenchShaderMat.clone();
+    trenchPointsMat.wireframe = false;
+
+    const leftWallGeo = createTrenchWallGeometry(false);
+    const rightWallGeo = createTrenchWallGeometry(true);
+
+    const leftWallMesh = new THREE.Mesh(leftWallGeo, trenchShaderMat);
+    leftWallMesh.position.set(-19, 0, -4);
+    leftWallMesh.rotation.y = 0.38;
+
+    const rightWallMesh = new THREE.Mesh(rightWallGeo, trenchShaderMat);
+    rightWallMesh.position.set(19, 0, -4);
+    rightWallMesh.rotation.y = -0.38;
+
+    const leftWallPts = new THREE.Points(leftWallGeo, trenchPointsMat);
+    leftWallPts.position.copy(leftWallMesh.position);
+    leftWallPts.rotation.copy(leftWallMesh.rotation);
+
+    const rightWallPts = new THREE.Points(rightWallGeo, trenchPointsMat);
+    rightWallPts.position.copy(rightWallMesh.position);
+    rightWallPts.rotation.copy(rightWallMesh.rotation);
+
+    trenchGroup.add(leftWallMesh, rightWallMesh, leftWallPts, rightWallPts);
+
+    /* ==========================================================================
+       7. БИО-СЛОЙ (2D CANVAS): BOIDS, VERLET-МЕДУЗА И ВСЕ ПРОЦЕДУРНЫЕ СУЩЕСТВА
+       ========================================================================== */
+    const bioCanvas = document.getElementById('bio-canvas');
+    const bctx = bioCanvas.getContext('2d');
+
+    function resizeBioCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2) * STATE.qualityScale;
+      bioCanvas.width = Math.floor(window.innerWidth * dpr);
+      bioCanvas.height = Math.floor(window.innerHeight * dpr);
+      bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resizeBioCanvas();
+
+    // 7.1. Пузыри при пересечении поверхности и в эпипелагиали
+    const surfaceBubbles = Array.from({ length: 85 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: 1.5 + Math.random() * 5.5,
+      vy: -(1.2 + Math.random() * 2.8),
+      wobble: Math.random() * Math.PI * 2
+    }));
+
+    // 7.2. Алгоритм Boids: стая из 160 рыб в эпипелагиали (0–200 м)
+    const BOID_COUNT = 160;
+    const boids = Array.from({ length: BOID_COUNT }, () => {
+      const cx = window.innerWidth * 0.65;
+      const cy = window.innerHeight * 0.48;
+      return {
+        x: cx + (Math.random() - 0.5) * 320,
+        y: cy + (Math.random() - 0.5) * 200,
+        vx: (Math.random() - 0.5) * 3,
+        vy: (Math.random() - 0.5) * 2,
+        phase: Math.random() * Math.PI * 2,
+        size: 5.5 + Math.random() * 3.5
+      };
+    });
+
+    function updateAndDrawBoids(w, h, time, alpha) {
+      if (alpha <= 0.01) return;
+      const anchorX = w * 0.64 + Math.sin(time * 0.45) * (w * 0.12);
+      const anchorY = h * 0.48 + Math.cos(time * 0.35) * (h * 0.10);
+
+      bctx.save();
+      bctx.globalAlpha = alpha;
+
+      for (let i = 0; i < BOID_COUNT; i++) {
+        const b = boids[i];
+        let sepX = 0, sepY = 0;
+        let alignX = 0, alignY = 0;
+        let cohX = 0, cohY = 0;
+        let neighbors = 0;
+
+        // Выборка соседей для высокой производительности (шаг 2)
+        for (let j = i % 2; j < BOID_COUNT; j += 2) {
+          if (i === j) continue;
+          const o = boids[j];
+          const dx = o.x - b.x;
+          const dy = o.y - b.y;
+          const dSq = dx * dx + dy * dy;
+          if (dSq < 4200 && dSq > 0.001) {
+            const d = Math.sqrt(dSq);
+            if (d < 24) {
+              sepX -= (dx / d) * (24 - d) * 0.08;
+              sepY -= (dy / d) * (24 - d) * 0.08;
+            }
+            alignX += o.vx;
+            alignY += o.vy;
+            cohX += o.x;
+            cohY += o.y;
+            neighbors++;
+          }
+        }
+
+        if (neighbors > 0) {
+          alignX /= neighbors;
+          alignY /= neighbors;
+          cohX = (cohX / neighbors - b.x) * 0.006;
+          cohY = (cohY / neighbors - b.y) * 0.006;
+          b.vx += sepX + (alignX - b.vx) * 0.05 + cohX;
+          b.vy += sepY + (alignY - b.vy) * 0.05 + cohY;
+        }
+
+        // Притяжение к центру косяка
+        b.vx += (anchorX - b.x) * 0.0018;
+        b.vy += (anchorY - b.y) * 0.0018;
+
+        // Разлет от курсора
+        const mdx = b.x - STATE.smoothMouseX;
+        const mdy = b.y - STATE.smoothMouseY;
+        const mDistSq = mdx * mdx + mdy * mdy;
+        if (mDistSq < 22500 && mDistSq > 1) {
+          const mDist = Math.sqrt(mDistSq);
+          const force = (150 - mDist) / 150;
+          b.vx += (mdx / mDist) * force * 1.45;
+          b.vy += (mdy / mDist) * force * 1.45;
+        }
+
+        // Ограничение скорости
+        const speed = Math.hypot(b.vx, b.vy);
+        const maxSpeed = 4.6;
+        const minSpeed = 1.4;
+        if (speed > maxSpeed) {
+          b.vx = (b.vx / speed) * maxSpeed;
+          b.vy = (b.vy / speed) * maxSpeed;
+        } else if (speed < minSpeed && speed > 0.001) {
+          b.vx = (b.vx / speed) * minSpeed;
+          b.vy = (b.vy / speed) * minSpeed;
+        }
+
+        b.x += b.vx;
+        b.y += b.vy - STATE.velocity * 0.14;
+        b.phase += 0.22 + speed * 0.05;
+
+        const angle = Math.atan2(b.vy, b.vx);
+        const wag = Math.sin(b.phase) * 0.28;
+
+        bctx.save();
+        bctx.translate(b.x, b.y);
+        bctx.rotate(angle);
+
+        bctx.fillStyle = 'rgba(215, 248, 255, 0.82)';
+        bctx.beginPath();
+        bctx.moveTo(b.size * 1.3, 0);
+        bctx.quadraticCurveTo(0, -b.size * 0.42, -b.size * 1.1, wag * b.size);
+        bctx.lineTo(-b.size * 1.65, -b.size * 0.45 + wag * b.size * 1.4);
+        bctx.lineTo(-b.size * 1.4, wag * b.size);
+        bctx.lineTo(-b.size * 1.65, b.size * 0.45 + wag * b.size * 1.4);
+        bctx.lineTo(-b.size * 1.1, wag * b.size);
+        bctx.quadraticCurveTo(0, b.size * 0.42, b.size * 1.3, 0);
+        bctx.fill();
+        bctx.restore();
+      }
+      bctx.restore();
+    }
+
+    // 7.3. Медуза Атолла с щупальцами на Verlet-физике (Мезопелагиаль)
+    const TENTACLE_COUNT = 10;
+    const NODES_PER_TENTACLE = 11;
+    const verletTentacles = Array.from({ length: TENTACLE_COUNT }, () =>
+      Array.from({ length: NODES_PER_TENTACLE }, (_, idx) => ({
+        x: 0, y: idx * 11, oldX: 0, oldY: idx * 11
+      }))
+    );
+
+    function drawVerletJellyfish(w, h, time, alpha) {
+      if (alpha <= 0.01) return;
+      const cx = w * 0.28 + Math.sin(time * 0.6) * 28;
+      const pulse = Math.sin(time * 2.4);
+      const cy = h * 0.42 + Math.cos(time * 0.5) * 18 - pulse * 8;
+      const bellW = 54 + pulse * 9;
+      const bellH = 34 - pulse * 5;
+
+      bctx.save();
+      bctx.globalAlpha = alpha;
+
+      // Обновление и отрисовка Verlet-щупалец, реагирующих на скорость скролла
+      const segLen = 11;
+      for (let t = 0; t < TENTACLE_COUNT; t++) {
+        const nodes = verletTentacles[t];
+        const spread = (t / (TENTACLE_COUNT - 1) - 0.5) * bellW * 1.5;
+        nodes[0].x = cx + spread;
+        nodes[0].y = cy + bellH * 0.35;
+
+        for (let i = 1; i < NODES_PER_TENTACLE; i++) {
+          const n = nodes[i];
+          const vx = (n.x - n.oldX) * 0.88 + Math.sin(time * 2.1 + t + i * 0.4) * 0.22;
+          const vy = (n.y - n.oldY) * 0.88 + 0.55 - STATE.velocity * 0.18;
+          n.oldX = n.x;
+          n.oldY = n.y;
+          n.x += vx;
+          n.y += vy;
+        }
+
+        // Релаксация связей (Constraints)
+        for (let iter = 0; iter < 3; iter++) {
+          for (let i = 0; i < NODES_PER_TENTACLE - 1; i++) {
+            const a = nodes[i];
+            const b = nodes[i + 1];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy) || 0.001;
+            const diff = (segLen - dist) / dist;
+            if (i === 0) {
+              b.x += dx * diff;
+              b.y += dy * diff;
+            } else {
+              a.x -= dx * diff * 0.5;
+              a.y -= dy * diff * 0.5;
+              b.x += dx * diff * 0.5;
+              b.y += dy * diff * 0.5;
+            }
+          }
+        }
+
+        bctx.strokeStyle = t % 2 === 0 ? 'rgba(76, 242, 255, 0.58)' : 'rgba(255, 79, 139, 0.52)';
+        bctx.lineWidth = 1.4;
+        bctx.beginPath();
+        bctx.moveTo(nodes[0].x, nodes[0].y);
+        for (let i = 1; i < NODES_PER_TENTACLE; i++) {
+          bctx.lineTo(nodes[i].x, nodes[i].y);
+        }
+        bctx.stroke();
+      }
+
+      // Купол медузы Атолла с биолюминесцентной короной
+      const grad = bctx.createRadialGradient(cx, cy - 6, 4, cx, cy, bellW * 1.1);
+      grad.addColorStop(0, 'rgba(255, 79, 139, 0.55)');
+      grad.addColorStop(0.55, 'rgba(138, 124, 255, 0.35)');
+      grad.addColorStop(1, 'rgba(76, 242, 255, 0.05)');
+
+      bctx.fillStyle = grad;
+      bctx.strokeStyle = 'rgba(76, 242, 255, 0.85)';
+      bctx.lineWidth = 1.6;
+      bctx.beginPath();
+      bctx.ellipse(cx, cy, bellW, bellH, 0, Math.PI, 0, false);
+      bctx.bezierCurveTo(cx + bellW * 0.6, cy + 12, cx - bellW * 0.6, cy + 12, cx - bellW, cy);
+      bctx.fill();
+      bctx.stroke();
+
+      // Бегущие биолюминесцентные точки по ободу короны
+      for (let k = 0; k < 12; k++) {
+        const ang = Math.PI + (k / 11) * Math.PI;
+        const px = cx + Math.cos(ang) * bellW * 0.88;
+        const py = cy + Math.sin(ang) * bellH * 0.72;
+        const glow = 0.4 + 0.6 * Math.sin(time * 6.0 - k * 0.7);
+        bctx.fillStyle = `rgba(76, 242, 255, ${glow})`;
+        bctx.beginPath();
+        bctx.arc(px, py, 2.2, 0, Math.PI * 2);
+        bctx.fill();
+      }
+
+      bctx.restore();
+      updateCreatureMarker('atolla', cx, cy);
+    }
+
+    // 7.4. Бочкоглаз (Macropinna microstoma) с прозрачной головой
+    function drawBarreleye(w, h, time, alpha) {
+      if (alpha <= 0.01) return;
+      const cx = w * 0.42 + Math.cos(time * 0.5) * 20;
+      const cy = h * 0.66 + Math.sin(time * 0.8) * 12;
+
+      bctx.save();
+      bctx.globalAlpha = alpha;
+      bctx.translate(cx, cy);
+
+      // Тело рыбы
+      bctx.fillStyle = 'rgba(18, 36, 54, 0.92)';
+      bctx.strokeStyle = 'rgba(120, 195, 230, 0.45)';
+      bctx.lineWidth = 1.2;
+      bctx.beginPath();
+      bctx.ellipse(8, 6, 44, 18, 0, 0, Math.PI * 2);
+      bctx.fill();
+      bctx.stroke();
+
+      // Хвостовой и грудные прозрачные плавники
+      const finWave = Math.sin(time * 4.2) * 5;
+      bctx.fillStyle = 'rgba(140, 220, 255, 0.22)';
+      bctx.beginPath();
+      bctx.moveTo(48, 6);
+      bctx.lineTo(72, -10 + finWave);
+      bctx.lineTo(66, 6);
+      bctx.lineTo(72, 22 + finWave);
+      bctx.closePath();
+      bctx.fill();
+
+      // Зеленые трубчатые глаза внутри прозрачного черепа
+      const eyeTilt = Math.sin(time * 0.9) * 0.35 - 0.35;
+      for (const offsetX of [-18, -8]) {
+        bctx.save();
+        bctx.translate(offsetX, 0);
+        bctx.rotate(eyeTilt);
+        bctx.fillStyle = '#183028';
+        bctx.fillRect(-5, -12, 10, 14);
+        // Изумрудные линзы
+        const lensGrad = bctx.createRadialGradient(0, -12, 1, 0, -12, 7);
+        lensGrad.addColorStop(0, '#9BFF66');
+        lensGrad.addColorStop(0.6, '#28E070');
+        lensGrad.addColorStop(1, 'rgba(40, 224, 112, 0.1)');
+        bctx.fillStyle = lensGrad;
+        bctx.beginPath();
+        bctx.arc(0, -12, 6.2, 0, Math.PI * 2);
+        bctx.fill();
+        bctx.restore();
+      }
+
+      // Прозрачный купол головы
+      const domeGrad = bctx.createRadialGradient(-16, -12, 2, -12, -2, 30);
+      domeGrad.addColorStop(0, 'rgba(220, 250, 255, 0.42)');
+      domeGrad.addColorStop(0.7, 'rgba(76, 242, 255, 0.16)');
+      domeGrad.addColorStop(1, 'rgba(76, 242, 255, 0.04)');
+      bctx.fillStyle = domeGrad;
+      bctx.strokeStyle = 'rgba(190, 245, 255, 0.75)';
+      bctx.lineWidth = 1.4;
+      bctx.beginPath();
+      bctx.arc(-12, 2, 24, Math.PI * 0.85, Math.PI * 1.95);
+      bctx.stroke();
+      bctx.fill();
+
+      bctx.restore();
+      updateCreatureMarker('barreleye', cx, cy);
+    }
+
+    // 7.5. Мерцающие огоньки миктофид (Мезопелагиаль)
+    const myctophidSwarm = Array.from({ length: 28 }, (_, i) => ({
+      dx: (Math.random() - 0.5) * 240,
+      dy: (Math.random() - 0.5) * 130,
+      phase: i * 0.7
+    }));
+
+    function drawMyctophids(w, h, time, alpha) {
+      if (alpha <= 0.01) return;
+      const baseX = w * 0.22;
+      const baseY = h * 0.72;
+      bctx.save();
+      bctx.globalAlpha = alpha;
+
+      for (const m of myctophidSwarm) {
+        const x = baseX + m.dx + Math.sin(time * 0.8 + m.phase) * 18;
+        const y = baseY + m.dy + Math.cos(time * 0.6 + m.phase) * 10;
+        const pulse = 0.35 + 0.65 * Math.pow(0.5 + 0.5 * Math.sin(time * 3.4 + m.phase * 2.1), 2);
+
+        // Тонкий силуэт рыбы
+        bctx.fillStyle = 'rgba(15, 42, 68, 0.75)';
+        bctx.beginPath();
+        bctx.ellipse(x, y, 11, 3.2, 0, 0, Math.PI * 2);
+        bctx.fill();
+
+        // Брюшные фотофоры (#4CF2FF)
+        for (let p = -6; p <= 6; p += 4) {
+          bctx.fillStyle = `rgba(76, 242, 255, ${pulse})`;
+          bctx.beginPath();
+          bctx.arc(x + p, y + 1.5, 1.3, 0, Math.PI * 2);
+          bctx.fill();
+        }
+      }
+      bctx.restore();
+      updateCreatureMarker('myctophids', baseX, baseY);
+    }
+
+    // 7.6. Черный удильщик Джонсона (Батипелагиаль: сначала виден только огонек приманки, в луче прожектора — тело)
+    function drawAnglerfish(w, h, time, alpha) {
+      if (alpha <= 0.01) return;
+      const cx = w * 0.68 + Math.sin(time * 0.4) * 16;
+      const cy = h * 0.44 + Math.cos(time * 0.5) * 14;
+
+      // Координаты биолюминесцентной приманки (эски)
+      const lureX = cx - 54 + Math.sin(time * 2.2) * 5;
+      const lureY = cy - 26 + Math.cos(time * 1.8) * 4;
+
+      // Расстояние от курсора-прожектора до удильщика
+      const distToSpotlight = Math.hypot(STATE.smoothMouseX - cx, STATE.smoothMouseY - cy);
+      const bodyReveal = Math.max(0.03, Math.min(1, 1 - (distToSpotlight - 65) / 210));
+
+      bctx.save();
+      bctx.globalAlpha = alpha;
+
+      // Тело удильщика проявляется только тогда, когда на него наводят прожектор
+      if (bodyReveal > 0.02) {
+        bctx.save();
+        bctx.globalAlpha = alpha * bodyReveal;
+        bctx.translate(cx, cy);
+
+        // Массивное шарообразное тело
+        const bodyGrad = bctx.createRadialGradient(-10, -5, 5, 0, 0, 52);
+        bodyGrad.addColorStop(0, '#2A2228');
+        bodyGrad.addColorStop(1, '#08070B');
+        bctx.fillStyle = bodyGrad;
+        bctx.strokeStyle = 'rgba(255, 231, 184, 0.38)';
+        bctx.lineWidth = 1.3;
+        bctx.beginPath();
+        bctx.ellipse(0, 0, 48, 36, -0.08, 0, Math.PI * 2);
+        bctx.fill();
+        bctx.stroke();
+
+        // Челюсть и длинные полупрозрачные зубы
+        bctx.strokeStyle = 'rgba(255, 240, 215, 0.78)';
+        bctx.lineWidth = 1.4;
+        const teethX = [-38, -31, -24, -17, -10];
+        for (const tx of teethX) {
+          bctx.beginPath();
+          bctx.moveTo(tx, 2);
+          bctx.lineTo(tx - 2, -10);
+          bctx.moveTo(tx - 1, 16);
+          bctx.lineTo(tx + 2, 4);
+          bctx.stroke();
+        }
+
+        // Иллиций («удочка»)
+        bctx.strokeStyle = 'rgba(160, 210, 230, 0.55)';
+        bctx.beginPath();
+        bctx.moveTo(-18, -28);
+        bctx.quadraticCurveTo(-38, -48, lureX - cx, lureY - cy);
+        bctx.stroke();
+
+        bctx.restore();
+      }
+
+      // Биолюминесцентная эска видна во тьме всегда
+      const escaGrad = bctx.createRadialGradient(lureX, lureY, 1, lureX, lureY, 24);
+      escaGrad.addColorStop(0, '#FFFFFF');
+      escaGrad.addColorStop(0.25, '#4CF2FF');
+      escaGrad.addColorStop(1, 'rgba(76, 242, 255, 0)');
+      bctx.fillStyle = escaGrad;
+      bctx.beginPath();
+      bctx.arc(lureX, lureY, 24, 0, Math.PI * 2);
+      bctx.fill();
+
+      bctx.restore();
+      updateCreatureMarker('anglerfish', lureX, lureY);
+    }
+
+    // 7.7. Адский вампир (Vampyroteuthis infernalis): при приближении света выворачивает плащ в «колючий шар»
+    let vampireCurl = 0;
+    function drawVampireSquid(w, h, time, alpha, dt) {
+      if (alpha <= 0.01) return;
+      const cx = w * 0.76 + Math.cos(time * 0.45) * 18;
+      const cy = h * 0.68 + Math.sin(time * 0.55) * 14;
+
+      const distToLight = Math.hypot(STATE.smoothMouseX - cx, STATE.smoothMouseY - cy);
+      const targetCurl = distToLight < 190 ? 1.0 : 0.0;
+      vampireCurl += (targetCurl - vampireCurl) * Math.min(1, dt * 4.5);
+
+      const spotIllum = Math.max(0.22, Math.min(1, 1 - (distToLight - 80) / 260));
+
+      bctx.save();
+      bctx.globalAlpha = alpha * spotIllum;
+      bctx.translate(cx, cy);
+
+      // Когда vampireCurl -> 1, плащ выворачивается вокруг мантии в «колючий шар» (поза ананаса)
+      const radiusX = 38 - vampireCurl * 6;
+      const radiusY = 26 + vampireCurl * 10;
+
+      const cloakGrad = bctx.createRadialGradient(0, 0, 4, 0, 0, 46);
+      cloakGrad.addColorStop(0, 'rgba(92, 24, 38, 0.92)');
+      cloakGrad.addColorStop(1, 'rgba(28, 8, 16, 0.85)');
+
+      bctx.fillStyle = cloakGrad;
+      bctx.strokeStyle = 'rgba(255, 79, 139, 0.55)';
+      bctx.lineWidth = 1.5;
+
+      bctx.beginPath();
+      bctx.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+      bctx.fill();
+      bctx.stroke();
+
+      // Перепончатые щупальца и мягкие шипы-цирры
+      const armCount = 8;
+      for (let i = 0; i < armCount; i++) {
+        const ang = (i / armCount) * Math.PI * 2 + time * 0.25 * (1 - vampireCurl);
+        const reach = 28 + (1 - vampireCurl) * 16;
+        const ax = Math.cos(ang) * reach;
+        const ay = Math.sin(ang) * (reach * 0.75);
+
+        bctx.strokeStyle = 'rgba(255, 120, 160, 0.65)';
+        bctx.lineWidth = 1.3;
+        bctx.beginPath();
+        bctx.moveTo(0, 0);
+        bctx.lineTo(ax, ay);
+        bctx.stroke();
+
+        // Шипы-цирры в позе «колючего шара»
+        if (vampireCurl > 0.15) {
+          const spikeLen = 9 * vampireCurl;
+          const sx = ax + Math.cos(ang) * spikeLen;
+          const sy = ay + Math.sin(ang) * spikeLen;
+          bctx.strokeStyle = 'rgba(255, 231, 184, 0.85)';
+          bctx.beginPath();
+          bctx.moveTo(ax, ay);
+          bctx.lineTo(sx, sy);
+          bctx.stroke();
+        }
+      }
+
+      // Голубые биолюминесцентные фоторецепторы (при выворачивании плаща перекрываются)
+      if (vampireCurl < 0.85) {
+        bctx.fillStyle = `rgba(76, 242, 255, ${1 - vampireCurl})`;
+        bctx.beginPath();
+        bctx.arc(-14, -4, 4.2, 0, Math.PI * 2);
+        bctx.arc(14, -4, 4.2, 0, Math.PI * 2);
+        bctx.fill();
+      }
+
+      bctx.restore();
+      updateCreatureMarker('vampire_squid', cx, cy);
+    }
+
+    // 7.8. Осьминог-думбо (Абиссопелагиаль 4000–6000 м): медленно гребет «ушами»
+    function drawDumboOctopus(w, h, time, alpha) {
+      if (alpha <= 0.01) return;
+      const cx = w * 0.30 + Math.sin(time * 0.35) * 22;
+      const cy = h * 0.52 + Math.cos(time * 0.45) * 16;
+      const earFlap = Math.sin(time * 1.8) * 0.48;
+
+      const distToLight = Math.hypot(STATE.smoothMouseX - cx, STATE.smoothMouseY - cy);
+      const illum = Math.max(0.32, Math.min(1, 1 - (distToLight - 110) / 320));
+
+      bctx.save();
+      bctx.globalAlpha = alpha * illum;
+      bctx.translate(cx, cy);
+
+      // Плавники-«уши» на мантии
+      for (const side of [-1, 1]) {
+        bctx.save();
+        bctx.translate(side * 22, -16);
+        bctx.rotate(side * earFlap);
+        bctx.fillStyle = 'rgba(210, 230, 255, 0.58)';
+        bctx.strokeStyle = 'rgba(138, 124, 255, 0.72)';
+        bctx.beginPath();
+        bctx.ellipse(side * 12, 0, 16, 8, 0, 0, Math.PI * 2);
+        bctx.fill();
+        bctx.stroke();
+        bctx.restore();
+      }
+
+      // Полупрозрачная куполообразная мантия
+      const dumboGrad = bctx.createRadialGradient(0, -10, 4, 0, 0, 38);
+      dumboGrad.addColorStop(0, 'rgba(240, 245, 255, 0.78)');
+      dumboGrad.addColorStop(1, 'rgba(138, 124, 255, 0.22)');
+      bctx.fillStyle = dumboGrad;
+      bctx.strokeStyle = 'rgba(200, 225, 255, 0.68)';
+      bctx.lineWidth = 1.4;
+
+      bctx.beginPath();
+      bctx.arc(0, -6, 26, Math.PI, 0, false);
+      bctx.bezierCurveTo(30, 22, 12, 30, 0, 24);
+      bctx.bezierCurveTo(-12, 30, -30, 22, -26, -6);
+      bctx.fill();
+      bctx.stroke();
+
+      bctx.restore();
+      updateCreatureMarker('dumbo', cx, cy);
+    }
+
+    // 7.9. Марианский улиточник (Pseudoliparis swirei, ~8000 м)
+    function drawSnailfish(w, h, time, alpha) {
+      if (alpha <= 0.01) return;
+      const cx = w * 0.68 + Math.sin(time * 0.55) * 26;
+      const cy = h * 0.54 + Math.cos(time * 0.4) * 14;
+
+      bctx.save();
+      bctx.globalAlpha = alpha;
+      bctx.translate(cx, cy);
+
+      // Полупрозрачное желеобразное тело с волнообразным хвостом
+      bctx.fillStyle = 'rgba(245, 215, 230, 0.48)';
+      bctx.strokeStyle = 'rgba(255, 235, 245, 0.72)';
+      bctx.lineWidth = 1.3;
+
+      const tailWave = Math.sin(time * 3.8) * 9;
+      bctx.beginPath();
+      bctx.moveTo(-42, 0);
+      bctx.bezierCurveTo(-42, -20, -10, -22, 18, -8);
+      bctx.quadraticCurveTo(44, -3 + tailWave * 0.5, 68, tailWave);
+      bctx.quadraticCurveTo(44, 7 + tailWave * 0.5, 18, 10);
+      bctx.bezierCurveTo(-10, 22, -42, 20, -42, 0);
+      bctx.fill();
+      bctx.stroke();
+
+      // Просвечивающие внутренние органы
+      bctx.fillStyle = 'rgba(255, 155, 180, 0.42)';
+      bctx.beginPath();
+      bctx.ellipse(-16, 2, 11, 7, 0, 0, Math.PI * 2);
+      bctx.fill();
+
+      bctx.restore();
+      updateCreatureMarker('snailfish', cx, cy);
+    }
+
+    // 7.10. Дно (10 935 м): Облако придонного ила и копошащиеся амфиподы (Hirondellea gigas)
+    const amphipods = Array.from({ length: 18 }, (_, i) => ({
+      ox: (Math.random() - 0.5) * 260,
+      oy: (Math.random() - 0.5) * 70,
+      phase: i * 1.1,
+      dir: Math.random() > 0.5 ? 1 : -1
+    }));
+
+    function drawSeabedAndAmphipods(w, h, time, alpha) {
+      if (alpha <= 0.01) return;
+      bctx.save();
+      bctx.globalAlpha = alpha;
+
+      // Рельеф дна Бездны Челленджера внизу экрана
+      const floorY = h * 0.78;
+      const floorGrad = bctx.createLinearGradient(0, floorY - 30, 0, h);
+      floorGrad.addColorStop(0, 'rgba(38, 34, 28, 0)');
+      floorGrad.addColorStop(0.25, 'rgba(46, 42, 35, 0.78)');
+      floorGrad.addColorStop(1, 'rgba(18, 16, 14, 0.98)');
+      bctx.fillStyle = floorGrad;
+      bctx.fillRect(0, floorY - 30, w, h - floorY + 30);
+
+      // Облако ила при касании дна (медленно поднимается и оседает)
+      if (STATE.siltCloudTime < 9.0) {
+        const t = STATE.siltCloudTime;
+        const plumeAlpha = Math.sin(Math.min(1, t / 1.4) * Math.PI * 0.5) * Math.exp(-Math.max(0, t - 1.4) * 0.42);
+        const rise = Math.min(140, t * 34);
+        const settle = Math.max(0, (t - 2.0) * 18);
+        const yCenter = floorY - rise + settle;
+
+        const siltGrad = bctx.createRadialGradient(w * 0.5, yCenter, 20, w * 0.5, yCenter, w * 0.48);
+        siltGrad.addColorStop(0, `rgba(185, 172, 148, ${plumeAlpha * 0.52})`);
+        siltGrad.addColorStop(0.6, `rgba(120, 112, 96, ${plumeAlpha * 0.28})`);
+        siltGrad.addColorStop(1, 'rgba(40, 36, 30, 0)');
+
+        bctx.fillStyle = siltGrad;
+        bctx.fillRect(0, floorY - 220, w, 240);
+      }
+
+      // Копошащиеся в луче прожектора амфиподы (Hirondellea gigas)
+      const colonyX = w * 0.65;
+      const colonyY = h * 0.82;
+
+      for (const a of amphipods) {
+        const ax = colonyX + a.ox + Math.sin(time * 2.1 + a.phase) * 18;
+        const ay = colonyY + a.oy + Math.abs(Math.cos(time * 3.4 + a.phase)) * -8;
+        const distBeam = Math.hypot(STATE.smoothMouseX - ax, STATE.smoothMouseY - ay);
+        const vis = Math.max(0.28, Math.min(1, 1 - (distBeam - 90) / 260));
+
+        bctx.save();
+        bctx.globalAlpha = alpha * vis;
+        bctx.translate(ax, ay);
+        bctx.scale(a.dir, 1);
+
+        // Дугообразный сегментированный панцирь бокоплава
+        bctx.strokeStyle = 'rgba(255, 238, 205, 0.85)';
+        bctx.fillStyle = 'rgba(235, 218, 190, 0.52)';
+        bctx.lineWidth = 1.2;
+        bctx.beginPath();
+        bctx.arc(0, 0, 8, Math.PI * 1.1, Math.PI * 1.95);
+        bctx.fill();
+        bctx.stroke();
+
+        // Усики и лапки
+        const legMove = Math.sin(time * 9.0 + a.phase) * 2.5;
+        bctx.beginPath();
+        bctx.moveTo(7, -2);
+        bctx.lineTo(13, -4 + legMove);
+        bctx.moveTo(-2, 0);
+        bctx.lineTo(-3, 5 + legMove);
+        bctx.moveTo(3, 0);
+        bctx.lineTo(2, 5 - legMove);
+        bctx.stroke();
+
+        bctx.restore();
+      }
+
+      bctx.restore();
+      updateCreatureMarker('amphipod', colonyX, colonyY);
+    }
+
+    /* ==========================================================================
+       8. УПРАВЛЕНИЕ DOM-УЗЛАМИ СУЩЕСТВ И СТЕКЛЯННОЙ КАРТОЧКОЙ
+       ========================================================================== */
+    const markersContainer = document.getElementById('creature-markers');
+    const markerElements = new Map();
+
+    CREATURES_DB.forEach((c) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'creature-node magnetic-el';
+      btn.dataset.creatureId = c.id;
+      btn.setAttribute('aria-label', `${c.nameRu} (${c.nameLat}) — открыть научную справку`);
+      btn.innerHTML = `
+        <span class="creature-node-dot"></span>
+        <span class="creature-node-tag">${c.nameRu.split(' (')[0]}</span>
+      `;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openCreatureModal(c);
+      });
+      markersContainer.appendChild(btn);
+      markerElements.set(c.id, btn);
+    });
+
+    function updateCreatureMarker(id, x, y) {
+      const el = markerElements.get(id);
+      if (!el) return;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+    }
+
+    const modalEl = document.getElementById('creature-modal');
+    const modalTitleRu = document.getElementById('modal-title-ru');
+    const modalTitleLat = document.getElementById('modal-title-lat');
+    const modalDepth = document.getElementById('modal-depth');
+    const modalPressure = document.getElementById('modal-pressure');
+    const modalFact = document.getElementById('modal-fact');
+    const modalCloseBtn = document.getElementById('modal-close');
+
+    function openCreatureModal(creature) {
+      modalTitleRu.textContent = creature.nameRu;
+      modalTitleLat.textContent = creature.nameLat;
+      modalDepth.textContent = creature.depthRange;
+      modalPressure.textContent = creature.pressureRange;
+      modalFact.textContent = creature.fact;
+      modalEl.classList.add('is-open');
+      modalEl.setAttribute('aria-hidden', 'false');
+      modalCloseBtn.focus();
+    }
+
+    function closeCreatureModal() {
+      modalEl.classList.remove('is-open');
+      modalEl.setAttribute('aria-hidden', 'true');
+    }
+
+    modalCloseBtn.addEventListener('click', closeCreatureModal);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modalEl.classList.contains('is-open')) {
+        closeCreatureModal();
+      }
+    });
+
+    /* ==========================================================================
+       9. ОБРАБОТЧИКИ ВЗАИМОДЕЙСТВИЙ: СОНАР, ВСПЛЫТИЕ, ШКАЛА, МАГНИТНЫЕ КНОПКИ
+       ========================================================================== */
+    function triggerSonarImpulse(clientX, clientY) {
+      STATE.sonarWaveTime = 0;
+      STATE.sonarOrigin.x = clientX / window.innerWidth;
+      STATE.sonarOrigin.y = clientY / window.innerHeight;
+      bgUniforms.uSonarOrigin.value.set(STATE.sonarOrigin.x, STATE.sonarOrigin.y);
+
+      const wx = (STATE.sonarOrigin.x - 0.5) * 44;
+      const wy = -(STATE.sonarOrigin.y - 0.5) * 32;
+      trenchUniforms.uSonarWorld.value.set(wx, wy, 0);
+
+      audioEngine.triggerSonarPing();
+    }
+
+    document.getElementById('sonar-ping-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerSonarImpulse(window.innerWidth * 0.5, window.innerHeight * 0.5);
+    });
+
+    window.addEventListener('click', (e) => {
+      if (e.target.closest('button') || e.target.closest('.creature-modal')) return;
+      // В хадопелагиали (6000-10900 м) клик в любом месте посылает сонарный импульс
+      if (STATE.depth >= 5600 && STATE.depth < 10910) {
+        triggerSonarImpulse(e.clientX, e.clientY);
+      }
+    });
+
+    // Переключатель звука
+    const audioBtn = document.getElementById('audio-toggle-btn');
+    const audioBtnLabel = document.getElementById('audio-btn-label');
+    audioBtn.addEventListener('click', () => {
+      const on = audioEngine.toggle();
+      audioBtn.setAttribute('aria-pressed', String(on));
+      audioBtnLabel.textContent = on ? 'ЗВУК: ВКЛ' : 'ЗВУК: ВЫКЛ';
+    });
+
+    // Быстрый переход по отметкам глубины на левой шкале
+    document.querySelectorAll('.scale-tick').forEach((tickBtn) => {
+      tickBtn.addEventListener('click', () => {
+        const targetD = parseFloat(tickBtn.dataset.targetDepth || '0');
+        const targetProg = depthToProgress(targetD);
+        window.scrollTo({
+          top: targetProg * STATE.maxScroll,
+          behavior: prefersReducedMotion ? 'auto' : 'smooth'
+        });
+      });
+    });
+
+    // Кнопка «Всплыть»: 6-секундный ускоренный обратный таймлапс подъема до поверхности
+    document.getElementById('btn-resurface').addEventListener('click', () => {
+      if (STATE.isResurfacing) return;
+      STATE.isResurfacing = true;
+      closeCreatureModal();
+
+      const proxy = { y: window.scrollY };
+      gsap.to(proxy, {
+        y: 0,
+        duration: prefersReducedMotion ? 0.5 : 6.0,
+        ease: 'power2.inOut',
+        onUpdate: () => {
+          window.scrollTo(0, proxy.y);
+          STATE.targetScroll = proxy.y;
+          STATE.currentScroll = proxy.y;
+          STATE.velocity = -42; // Вытягивает частицы снега вниз штрихами
+        },
+        onComplete: () => {
+          STATE.isResurfacing = false;
+          STATE.surfaceSplashTime = 0;
+          audioEngine.triggerSplash();
+        }
+      });
+    });
+
+    // Магнитные кнопки и отслеживание курсора/касаний
+    const customCursor = document.getElementById('custom-cursor');
+    const cursorLabel = document.getElementById('cursor-label');
+
+    function onPointerMove(clientX, clientY) {
+      STATE.mouseX = clientX;
+      STATE.mouseY = clientY;
+      document.documentElement.style.setProperty('--cursor-x', `${clientX}px`);
+      document.documentElement.style.setProperty('--cursor-y', `${clientY}px`);
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      onPointerMove(e.clientX, e.clientY);
+      const isInteractive = Boolean(e.target.closest('button, .creature-node'));
+      customCursor.dataset.hover = String(isInteractive);
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 0) {
+        onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    // Магнитный эффект для кнопок
+    document.querySelectorAll('.magnetic-el').forEach((el) => {
+      el.addEventListener('mousemove', (e) => {
+        if (prefersReducedMotion) return;
+        const rect = el.getBoundingClientRect();
+        const dx = e.clientX - (rect.left + rect.width * 0.5);
+        const dy = e.clientY - (rect.top + rect.height * 0.5);
+        el.style.transform = `translate(${dx * 0.22}px, ${dy * 0.22}px)`;
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = '';
+      });
+    });
+
+    /* ==========================================================================
+       10. ЭЛЕМЕНТЫ HUD, ВАРИАТИВНАЯ ТИПОГРАФИКА И ПРЕЛОАДЕР
+       ========================================================================== */
+    const hudDepthEl = document.getElementById('hud-depth');
+    const hudPressureEl = document.getElementById('hud-pressure');
+    const hudTempEl = document.getElementById('hud-temp');
+    const hudLightEl = document.getElementById('hud-light');
+    const hudZoneLabelEl = document.getElementById('hud-zone-label');
+    const telemetryGridEl = document.getElementById('telemetry-grid');
+    const scaleProgressEl = document.getElementById('scale-progress');
+    const scaleRunnerEl = document.getElementById('scale-runner');
+    const runnerReadoutEl = document.getElementById('runner-readout');
+    const touchdownBannerEl = document.getElementById('touchdown-banner');
+    const bottomHeadingEl = document.getElementById('bottom-heading');
+    const zoneSections = Array.from(document.querySelectorAll('.zone-section'));
+    const scaleTicks = Array.from(document.querySelectorAll('.scale-tick'));
+
+    let glitchTimeout = null;
+    function triggerHudGlitch() {
+      if (prefersReducedMotion) return;
+      telemetryGridEl.classList.add('hud-glitch');
+      clearTimeout(glitchTimeout);
+      glitchTimeout = setTimeout(() => {
+        telemetryGridEl.classList.remove('hud-glitch');
+      }, 150);
+    }
+
+    // Запуск прелоадера «Заполнение балластных цистерн» (0 -> 100%)
+    function runPreloader() {
+      const preloaderEl = document.getElementById('preloader');
+      const pctEl = document.getElementById('preloader-pct');
+      const statusEl = document.getElementById('preloader-status');
+      const waterGroup = document.getElementById('tank-water-group');
+      const wavePath = document.getElementById('tank-wave-path');
+
+      let loadProg = 0;
+      function stepPreloader(now) {
+        loadProg = Math.min(100, loadProg + (prefersReducedMotion ? 10 : 2.2));
+        const pctInt = Math.floor(loadProg);
+        pctEl.textContent = `${String(pctInt).padStart(3, '0')}%`;
+        preloaderEl.setAttribute('aria-valuenow', String(pctInt));
+
+        const yPos = 225 - (loadProg / 100) * 195;
+        waterGroup.setAttribute('transform', `translate(0, ${yPos})`);
+        const waveAmp = Math.sin(now * 0.008) * 6;
+        wavePath.setAttribute('d', `M 40 0 Q 70 ${waveAmp} 100 0 T 160 0 L 160 250 L 40 250 Z`);
+
+        if (loadProg < 100) {
+          requestAnimationFrame(stepPreloader);
+        } else {
+          statusEl.textContent = 'ЛЮКИ ГЕРМЕТИЗИРОВАНЫ · НАЧАТЬ СПУСК';
+          setTimeout(() => {
+            preloaderEl.classList.add('is-hidden');
+            updateHeroTitleTexture();
+          }, 320);
+        }
+      }
+      requestAnimationFrame(stepPreloader);
+    }
+
+    /* ==========================================================================
+       11. ГЛАВНЫЙ ЦИКЛ СИМУЛЯЦИИ, РЕНДЕРА И АДАПТИВНОГО КАЧЕСТВА (60 FPS)
+       ========================================================================== */
+    function updateMaxScroll() {
+      STATE.maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    }
+    updateMaxScroll();
+
+    window.addEventListener('scroll', () => {
+      if (!STATE.isResurfacing) {
+        STATE.targetScroll = window.scrollY;
+      }
+    }, { passive: true });
+
+    window.addEventListener('resize', () => {
+      updateMaxScroll();
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      bgUniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+      resizeBioCanvas();
+      updateHeroTitleTexture();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      STATE.isTabVisible = !document.hidden;
+      audioEngine.setTabVisibility(STATE.isTabVisible);
+    });
+
+    let lastTime = performance.now();
+    let fpsFrames = 0;
+    let fpsAccum = 0;
+    let prevDepthForSplash = 0;
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      if (!STATE.isTabVisible) {
+        lastTime = now;
+        return;
+      }
+
+      const dt = Math.min(0.05, (now - lastTime) * 0.001);
+      lastTime = now;
+      const elapsed = now * 0.001;
+
+      // Мониторинг FPS и адаптивное качество
+      fpsFrames++;
+      fpsAccum += dt;
+      if (fpsFrames >= 60) {
+        const avgFps = fpsFrames / fpsAccum;
+        if (avgFps < 46 && STATE.qualityScale > 0.7) {
+          STATE.qualityScale = 0.75;
+          STATE.activeSnowCount = 3400;
+          snowGeo.setDrawRange(0, STATE.activeSnowCount);
+          resizeBioCanvas();
+        }
+        fpsFrames = 0;
+        fpsAccum = 0;
+      }
+
+      // Плавный инерционный скролл (lerp)
+      if (prefersReducedMotion || STATE.isResurfacing) {
+        if (!STATE.isResurfacing) {
+          STATE.velocity = STATE.targetScroll - STATE.currentScroll;
+          STATE.currentScroll = STATE.targetScroll;
+        }
+      } else {
+        const delta = STATE.targetScroll - STATE.currentScroll;
+        STATE.velocity = delta * 0.12;
+        STATE.currentScroll += STATE.velocity;
+      }
+
+      STATE.progress = Math.max(0, Math.min(1, STATE.currentScroll / STATE.maxScroll));
+      const newDepth = progressToDepth(STATE.progress);
+
+      // Пересечение поверхности воды (Сцена 2: всплеск пузырей и водяная линза)
+      if ((prevDepthForSplash <= 5 && newDepth > 5) || (prevDepthForSplash >= 5 && newDepth < 5)) {
+        STATE.surfaceSplashTime = 0;
+        audioEngine.triggerSplash();
+      }
+      prevDepthForSplash = newDepth;
+      STATE.depth = newDepth;
+
+      // Проверка смены зоны и сбой приборов на 150 мс
+      const nextZone = getZoneIndexFromDepth(STATE.depth, STATE.progress);
+      if (nextZone !== STATE.zoneIndex) {
+        STATE.zoneIndex = nextZone;
+        hudZoneLabelEl.textContent = ZONE_NAMES[nextZone];
+        triggerHudGlitch();
+      }
+
+      // Касание дна (10 935 м): облако ила, замирание HUD и 3 секунды тишины
+      if (STATE.depth >= 10930 && !STATE.touchdownTriggered) {
+        STATE.touchdownTriggered = true;
+        STATE.touchdownSilenceActive = true;
+        STATE.touchdownTimer = 3.0;
+        STATE.siltCloudTime = 0;
+        touchdownBannerEl.classList.add('is-visible');
+      } else if (STATE.depth < 10500) {
+        STATE.touchdownTriggered = false;
+        STATE.bottomFontExhale = 0;
+        touchdownBannerEl.classList.remove('is-visible');
+      }
+
+      if (STATE.touchdownSilenceActive) {
+        STATE.touchdownTimer -= dt;
+        if (STATE.touchdownTimer <= 0) {
+          STATE.touchdownSilenceActive = false;
+          touchdownBannerEl.classList.remove('is-visible');
+        }
+      }
+
+      if (STATE.touchdownTriggered && !STATE.touchdownSilenceActive) {
+        STATE.bottomFontExhale = Math.min(1, STATE.bottomFontExhale + dt * 0.35);
+      }
+
+      // Обновление телеметрии (во время 3 секунд касания дна приборы замирают на финальных отметках)
+      STATE.pressure = 1.0 + STATE.depth / 10.0;
+      STATE.temperature = computeTemperature(STATE.depth);
+      STATE.sunlight = computeSunlight(STATE.depth);
+
+      if (!STATE.touchdownSilenceActive) {
+        hudDepthEl.textContent = Math.round(STATE.depth).toLocaleString('ru-RU');
+        hudPressureEl.textContent = STATE.pressure.toFixed(1);
+        hudTempEl.textContent = STATE.temperature.toFixed(1);
+        hudLightEl.textContent = STATE.sunlight < 0.05 && STATE.depth > 950
+          ? '0.00'
+          : STATE.sunlight.toFixed(1);
+      } else {
+        hudDepthEl.textContent = '10 935';
+        hudPressureEl.textContent = '1094.5';
+        hudTempEl.textContent = '1.4';
+        hudLightEl.textContent = '0.00';
+      }
+
+      // Обновление вертикальной шкалы глубины слева
+      const scalePct = (STATE.depth / 10935) * 100;
+      scaleProgressEl.style.height = `${scalePct}%`;
+      scaleRunnerEl.style.top = `${scalePct}%`;
+      runnerReadoutEl.textContent = `${Math.round(STATE.depth)} М`;
+
+      scaleTicks.forEach((tick) => {
+        const td = parseFloat(tick.dataset.targetDepth || '0');
+        tick.classList.toggle('is-active', Math.abs(STATE.depth - td) < 350);
+      });
+
+      // ТИПОГРАФИКА ПОД ДАВЛЕНИЕМ: с глубиной буквы сжимаются, вес растет, трекинг сужается
+      const pressureNorm = Math.min(1, STATE.depth / 10935);
+      const wdth = Math.round(135 - pressureNorm * 110); // 135 -> 25
+      const wght = Math.round(320 + pressureNorm * 630); // 320 -> 950
+      const track = (0.12 - pressureNorm * 0.165).toFixed(3);
+
+      document.documentElement.style.setProperty('--title-wdth', String(wdth));
+      document.documentElement.style.setProperty('--title-wght', String(wght));
+      document.documentElement.style.setProperty('--title-track', `${track}em`);
+
+      // На дне после 3-секундной паузы заголовок медленно «выдыхает» и расправляется
+      if (bottomHeadingEl && STATE.bottomFontExhale > 0) {
+        const exhaleW = Math.round(25 + STATE.bottomFontExhale * 95);
+        const exhaleG = Math.round(950 - STATE.bottomFontExhale * 480);
+        const exhaleT = (-0.045 + STATE.bottomFontExhale * 0.14).toFixed(3);
+        bottomHeadingEl.style.fontVariationSettings = `'wdth' ${exhaleW}, 'wght' ${exhaleG}`;
+        bottomHeadingEl.style.letterSpacing = `${exhaleT}em`;
+      } else if (bottomHeadingEl) {
+        bottomHeadingEl.style.fontVariationSettings = '';
+        bottomHeadingEl.style.letterSpacing = '';
+      }
+
+      // Контекстная смена формы кастомного курсора
+      if (STATE.depth < 1000) {
+        customCursor.dataset.mode = 'ring';
+        cursorLabel.textContent = 'ОБЗОР';
+      } else if (STATE.depth >= 5800 && STATE.depth < 10850) {
+        customCursor.dataset.mode = 'sonar';
+        cursorLabel.textContent = 'СОНАР (КЛИК)';
+      } else {
+        customCursor.dataset.mode = 'spotlight';
+        cursorLabel.textContent = 'ПРОЖЕКТОР';
+      }
+
+      // Плавное сглаживание координат прожектора
+      STATE.smoothMouseX += (STATE.mouseX - STATE.smoothMouseX) * 0.14;
+      STATE.smoothMouseY += (STATE.mouseY - STATE.smoothMouseY) * 0.14;
+
+      // Построчное проявление текстов зон через маску
+      zoneSections.forEach((sec) => {
+        const rect = sec.getBoundingClientRect();
+        const inView = rect.top < window.innerHeight * 0.78 && rect.bottom > window.innerHeight * 0.18;
+        sec.classList.toggle('is-inview', inView);
+      });
+
+      // Активация клавиатурных и кликабельных узлов существ по их диапазону глубин
+      CREATURES_DB.forEach((c) => {
+        const el = markerElements.get(c.id);
+        if (!el) return;
+        const visible = STATE.depth >= c.minDepth && STATE.depth <= c.maxDepth;
+        el.classList.toggle('is-active', visible);
+        if (c.id === 'jack_mackerel' && visible) {
+          updateCreatureMarker('jack_mackerel', window.innerWidth * 0.64, window.innerHeight * 0.48);
+        }
+      });
+
+      // Таймеры спецэффектов
+      STATE.surfaceSplashTime += dt;
+      STATE.sonarWaveTime += dt;
+      STATE.siltCloudTime += dt;
+
+      const splashLensStrength = STATE.surfaceSplashTime < 1.1
+        ? Math.sin((STATE.surfaceSplashTime / 1.1) * Math.PI)
+        : 0;
+
+      // Обновление униформ WebGL
+      const normMouseX = STATE.smoothMouseX / window.innerWidth;
+      const normMouseY = STATE.smoothMouseY / window.innerHeight;
+      const worldMouseX = (normMouseX - 0.5) * 44;
+      const worldMouseY = -(normMouseY - 0.5) * 32;
+
+      bgUniforms.uTime.value = elapsed;
+      bgUniforms.uDepth.value = STATE.depth;
+      bgUniforms.uProgress.value = STATE.progress;
+      bgUniforms.uMouse.value.set(normMouseX, normMouseY);
+      bgUniforms.uSplashLens.value = prefersReducedMotion ? 0 : splashLensStrength;
+      bgUniforms.uSonarTime.value = STATE.sonarWaveTime;
+
+      snowUniforms.uTime.value = elapsed;
+      snowUniforms.uScrollOffset.value = STATE.currentScroll;
+      snowUniforms.uVelocity.value = prefersReducedMotion ? 0 : STATE.velocity;
+      snowUniforms.uDepth.value = STATE.depth;
+      snowUniforms.uMouseWorld.value.set(worldMouseX, worldMouseY);
+
+      trenchUniforms.uTime.value = elapsed;
+      trenchUniforms.uDepth.value = STATE.depth;
+      trenchUniforms.uSonarTime.value = STATE.sonarWaveTime;
+      trenchUniforms.uMouseWorld.value.set(worldMouseX, worldMouseY);
+
+      renderer.render(scene, camera);
+
+      // Отрисовка процедурной фауны и физических систем на 2D-слое
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      bctx.clearRect(0, 0, w, h);
+
+      // 1. Всплеск пузырей при погружении и в эпипелагиали (0–220 м)
+      const bubbleAlpha = Math.max(0, Math.min(1, 1 - STATE.depth / 220)) * (STATE.progress > 0.02 ? 1 : 0.25);
+      if (bubbleAlpha > 0.01) {
+        bctx.save();
+        bctx.strokeStyle = `rgba(220, 250, 255, ${bubbleAlpha * 0.65})`;
+        bctx.fillStyle = `rgba(255, 255, 255, ${bubbleAlpha * 0.18})`;
+        for (const b of surfaceBubbles) {
+          b.y += b.vy - STATE.velocity * 0.25;
+          b.x += Math.sin(elapsed * 2.5 + b.wobble) * 0.6;
+          if (b.y < -10) b.y = h + 10;
+          if (b.y > h + 15) b.y = -5;
+          bctx.beginPath();
+          bctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+          bctx.fill();
+          bctx.stroke();
+        }
+        bctx.restore();
+      }
+
+      // 2. Эпипелагиаль: косяк из 160 рыб на Boids
+      const epipelagicAlpha = STATE.depth > 8 && STATE.depth < 240
+        ? Math.min(1, (STATE.depth - 8) / 25) * Math.min(1, (240 - STATE.depth) / 45)
+        : 0;
+      updateAndDrawBoids(w, h, elapsed, epipelagicAlpha);
+
+      // 3. Мезопелагиаль: медуза с Verlet-щупальцами, бочкоглаз и миктофиды
+      const mesoAlpha = STATE.depth > 180 && STATE.depth < 1050
+        ? Math.min(1, (STATE.depth - 180) / 80) * Math.min(1, (1050 - STATE.depth) / 100)
+        : 0;
+      drawVerletJellyfish(w, h, elapsed, mesoAlpha);
+      drawBarreleye(w, h, elapsed, mesoAlpha);
+      drawMyctophids(w, h, elapsed, mesoAlpha);
+
+      // 4. Батипелагиаль: удильщик и вампирский кальмар
+      const bathyAlpha = STATE.depth > 950 && STATE.depth < 4100
+        ? Math.min(1, (STATE.depth - 950) / 200) * Math.min(1, (4100 - STATE.depth) / 250)
+        : 0;
+      drawAnglerfish(w, h, elapsed, bathyAlpha);
+      drawVampireSquid(w, h, elapsed, bathyAlpha, dt);
+
+      // 5. Абиссопелагиаль: осьминог-думбо
+      const abyssAlpha = STATE.depth > 3900 && STATE.depth < 6100
+        ? Math.min(1, (STATE.depth - 3900) / 250) * Math.min(1, (6100 - STATE.depth) / 250)
+        : 0;
+      drawDumboOctopus(w, h, elapsed, abyssAlpha);
+
+      // 6. Хадопелагиаль: марианский улиточник (~8000 м)
+      const snailAlpha = STATE.depth > 6200 && STATE.depth < 9800
+        ? Math.min(1, (STATE.depth - 6200) / 400) * Math.min(1, (9800 - STATE.depth) / 400)
+        : 0;
+      drawSnailfish(w, h, elapsed, snailAlpha);
+
+      // 7. Дно (10 935 м): облако ила и амфиподы Hirondellea gigas
+      const bottomAlpha = STATE.depth > 10000
+        ? Math.min(1, (STATE.depth - 10000) / 500)
+        : 0;
+      drawSeabedAndAmphipods(w, h, elapsed, bottomAlpha);
+
+      // Обновление процедурного звука
+      audioEngine.update(STATE.depth, dt, STATE.touchdownSilenceActive);
+    }
+
+    runPreloader();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
