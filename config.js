@@ -22,7 +22,7 @@ window.COMPARE = {
     {
       id: 'bathyscaphe',
       title: 'Батискаф',
-      sites: { claude: null, argon: 'sites/k2m9.html' },
+      sites: { claude: 'sites/x1.html', argon: 'sites/k2m9.html' },
     },
     {
       id: 'watch',
