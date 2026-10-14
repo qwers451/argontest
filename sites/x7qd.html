@@ -1,0 +1,3340 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>АРГОН-IV : Мануфактурный калибр с минутным турбийоном</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/",
+      "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/index.js",
+      "gsap/ScrollTrigger": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/ScrollTrigger.js"
+    }
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg-deep: #07080a;
+      --bg-panel: rgba(14, 16, 21, 0.78);
+      --border-gold: rgba(212, 175, 112, 0.28);
+      --border-subtle: rgba(255, 255, 255, 0.09);
+      --gold: #d4af70;
+      --gold-bright: #f3d49c;
+      --steel-blue: #4a88d9;
+      --ruby: #e02447;
+      --text-main: #f2efe9;
+      --text-muted: #9a9994;
+      --font-serif: 'Cormorant Garamond', Georgia, serif;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    html, body {
+      width: 100%;
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      overflow-x: hidden;
+      selection-background-color: var(--gold);
+    }
+
+    /* Preloader */
+    #preloader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: radial-gradient(circle at center, #12141a 0%, #060709 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.9s;
+    }
+    #preloader.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    #preloader-canvas {
+      width: 260px;
+      height: 260px;
+      margin-bottom: 24px;
+    }
+    .preloader-title {
+      font-family: var(--font-serif);
+      font-size: 28px;
+      letter-spacing: 0.25em;
+      color: var(--gold-bright);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .preloader-status {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* Fixed 3D Viewport */
+    #viewport {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      cursor: grab;
+      touch-action: pan-y;
+    }
+    #viewport:active {
+      cursor: grabbing;
+    }
+
+    /* SVG Callout Overlay */
+    #callout-svg {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    #callout-svg.visible {
+      opacity: 1;
+    }
+    #callout-labels {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    #callout-labels.visible {
+      opacity: 1;
+    }
+    .callout-item {
+      position: absolute;
+      transform: translateY(-50%);
+      background: rgba(10, 12, 16, 0.86);
+      border: 1px solid var(--border-gold);
+      padding: 6px 12px;
+      border-radius: 4px;
+      pointer-events: auto;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s, transform 0.2s;
+      max-width: 230px;
+    }
+    .callout-item:hover, .callout-item:focus-visible {
+      border-color: var(--gold-bright);
+      transform: translateY(-50%) scale(1.03);
+      outline: none;
+    }
+    .callout-item .c-name {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--gold-bright);
+      text-transform: uppercase;
+      display: block;
+    }
+    .callout-item .c-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* Energy Ratio Badges (Stage 4) */
+    #energy-badges {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    #energy-badges.visible {
+      opacity: 1;
+    }
+    .ratio-badge {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      background: rgba(20, 15, 8, 0.88);
+      border: 1px solid var(--gold);
+      padding: 4px 9px;
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--gold-bright);
+      box-shadow: 0 0 16px rgba(212, 175, 112, 0.35);
+      white-space: nowrap;
+    }
+
+    /* Top HUD */
+    header.hud-top {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 28px;
+      background: linear-gradient(to bottom, rgba(7,8,10,0.85) 0%, rgba(7,8,10,0) 100%);
+      pointer-events: none;
+    }
+    .brand-block {
+      pointer-events: auto;
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+    }
+    .brand-title {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--gold-bright);
+    }
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    .hud-telemetry {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      padding: 8px 16px;
+      border-radius: 6px;
+      backdrop-filter: blur(12px);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .tele-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tele-label {
+      color: var(--text-muted);
+    }
+    .tele-val {
+      color: var(--gold-bright);
+      font-weight: 500;
+    }
+    .phase-pill {
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: rgba(212, 175, 112, 0.16);
+      border: 1px solid var(--border-gold);
+      color: var(--gold-bright);
+      min-width: 105px;
+      text-align: center;
+    }
+
+    /* Bottom Dock Controls */
+    .hud-bottom {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      padding: 10px 16px;
+      border-radius: 8px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      max-width: 96vw;
+    }
+
+    .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-right: 10px;
+      border-right: 1px solid var(--border-subtle);
+    }
+    .ctrl-group:last-child {
+      border-right: none;
+      padding-right: 0;
+    }
+    .ctrl-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      margin-right: 4px;
+    }
+
+    button.ui-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button.ui-btn:hover, button.ui-btn:focus-visible {
+      border-color: var(--gold);
+      color: var(--gold-bright);
+      outline: none;
+    }
+    button.ui-btn.active {
+      background: rgba(212, 175, 112, 0.22);
+      border-color: var(--gold);
+      color: var(--gold-bright);
+    }
+
+    input[type="range"].ui-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 110px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"].ui-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--gold);
+      cursor: pointer;
+      border: 2px solid #0b0c10;
+    }
+
+    /*Hover Tooltip */
+    #hover-tooltip {
+      position: fixed;
+      z-index: 20;
+      pointer-events: none;
+      background: rgba(8, 10, 14, 0.92);
+      border: 1px solid var(--gold);
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--gold-bright);
+      transform: translate(14px, -14px);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      white-space: nowrap;
+    }
+    #hover-tooltip.visible {
+      opacity: 1;
+    }
+
+    /* Part Info Modal Card (On Click) */
+    #part-card {
+      position: fixed;
+      top: 84px;
+      right: 28px;
+      width: 320px;
+      z-index: 15;
+      background: rgba(11, 13, 18, 0.92);
+      border: 1px solid var(--border-gold);
+      border-radius: 8px;
+      padding: 20px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      transform: translateX(360px);
+      opacity: 0;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+      pointer-events: none;
+    }
+    #part-card.open {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .part-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 10px;
+    }
+    .part-card-title {
+      font-family: var(--font-serif);
+      font-size: 21px;
+      color: var(--gold-bright);
+      line-height: 1.2;
+    }
+    .part-card-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .part-card-close:hover {
+      color: var(--text-main);
+    }
+    .part-meta-row {
+      margin-bottom: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .part-meta-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 2px;
+    }
+    .part-fact-box {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: rgba(212, 175, 112, 0.08);
+      border-left: 2px solid var(--gold);
+      font-size: 12px;
+      color: #dfd9ce;
+      line-height: 1.45;
+    }
+
+    /* Loupe HUD Reticle */
+    #loupe-badge {
+      position: fixed;
+      top: 84px;
+      left: 28px;
+      z-index: 12;
+      background: rgba(212, 175, 112, 0.15);
+      border: 1px solid var(--gold);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--gold-bright);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #loupe-badge.active {
+      opacity: 1;
+    }
+
+    /* Scroll Story Layout (800vh) */
+    #scroll-container {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 800vh;
+      pointer-events: none;
+    }
+    .story-section {
+      height: 100vh;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      padding: 0 7vw;
+      position: relative;
+    }
+    .story-section.align-right {
+      justify-content: flex-end;
+    }
+    .story-section.align-bottom {
+      align-items: flex-end;
+      padding-bottom: 110px;
+    }
+    .story-card {
+      max-width: 430px;
+      background: rgba(10, 12, 16, 0.72);
+      border: 1px solid var(--border-subtle);
+      border-left: 2px solid var(--gold);
+      padding: 26px 30px;
+      border-radius: 6px;
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+    .story-step {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .story-heading {
+      font-family: var(--font-serif);
+      font-size: clamp(28px, 3.2vw, 42px);
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.12;
+      margin-bottom: 14px;
+    }
+    .story-body {
+      font-size: 14px;
+      line-height: 1.65;
+      color: #c7c4be;
+    }
+    .story-specs {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-subtle);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .spec-k { color: var(--text-muted); display: block; font-size: 10px; }
+    .spec-v { color: var(--gold-bright); }
+
+    /* Configurator Panel in Section 8 */
+    .configurator-grid {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .conf-row-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+    .conf-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    /* Progress Bar on Right Edge */
+    .scroll-progress-track {
+      position: fixed;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2px;
+      height: 180px;
+      background: rgba(255, 255, 255, 0.12);
+      z-index: 10;
+      pointer-events: none;
+    }
+    #scroll-progress-bar {
+      width: 100%;
+      height: 0%;
+      background: var(--gold);
+    }
+
+    @media (max-width: 768px) {
+      header.hud-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 12px 16px;
+      }
+      .hud-telemetry {
+        width: 100%;
+        justify-content: space-between;
+        font-size: 10px;
+        padding: 6px 10px;
+      }
+      .story-card {
+        max-width: 100%;
+        padding: 18px 20px;
+      }
+      .hud-bottom {
+        bottom: 10px;
+        padding: 8px 10px;
+        gap: 6px;
+      }
+      #part-card {
+        left: 16px;
+        right: 16px;
+        width: auto;
+        top: auto;
+        bottom: 90px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 0. PRELOADER -->
+  <div id="preloader" role="status" aria-live="polite">
+    <canvas id="preloader-canvas" width="520" height="520"></canvas>
+    <div class="preloader-title">АРГОН-IV</div>
+    <div class="preloader-status" id="preloader-status">Нарезка циклоидального профиля зубьев...</div>
+  </div>
+
+  <!-- FIXED 3D CANVAS -->
+  <canvas id="viewport" aria-label="Интерактивная 3D модель механического калибра АРГОН-IV"></canvas>
+
+  <!-- SVG OVERLAY FOR EXPLODED VIEW CALLOUTS -->
+  <svg id="callout-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="callout-labels"></div>
+  <div id="energy-badges"></div>
+
+  <!-- HOVER TOOLTIP -->
+  <div id="hover-tooltip"></div>
+
+  <!-- LOUPE INDICATOR -->
+  <div id="loupe-badge">РЕЖИМ ЮВЕЛИРНОЙ ЛУПЫ (10X DOF)</div>
+
+  <!-- TOP HUD -->
+  <header class="hud-top">
+    <div class="brand-block">
+      <span class="brand-title">АРГОН-IV</span>
+      <span class="brand-sub">КАЛИБР С МИНУТНЫМ ТУРБИЙОНОМ</span>
+    </div>
+    <div class="hud-telemetry">
+      <div class="tele-item">
+        <span class="tele-label">ВРЕМЯ:</span>
+        <span class="tele-val" id="hud-clock">00:00:00</span>
+      </div>
+      <div class="tele-item">
+        <span class="tele-label">ЗАПАС ХОДА:</span>
+        <span class="tele-val" id="hud-reserve">42.0 Ч</span>
+      </div>
+      <div class="tele-item">
+        <span class="tele-label">ЧАСТОТА:</span>
+        <span class="tele-val">4 ГЦ (28 800 ПК/Ч)</span>
+      </div>
+      <div class="tele-item">
+        <span class="phase-pill" id="hud-phase">ФАЗА: ПОКОЙ</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- PART DOSSIER CARD -->
+  <aside id="part-card" aria-live="polite">
+    <div class="part-card-header">
+      <h3 class="part-card-title" id="pc-title">Анкерное колесо</h3>
+      <button class="part-card-close" id="pc-close" aria-label="Закрыть карточку">✕</button>
+    </div>
+    <div class="part-meta-row">
+      <span class="part-meta-label">Материал и отделка</span>
+      <div id="pc-material">Сплав никель-фосфор (LIGA), зеркальная полировка</div>
+    </div>
+    <div class="part-meta-row">
+      <span class="part-meta-label">Функция в калибре</span>
+      <div id="pc-function">Передаёт импульсы анкерной вилке 8 раз в секунду.</div>
+    </div>
+    <div class="part-fact-box" id="pc-fact">
+      Пяточный профиль 15 зубьев распределяет контактное давление по рубиновым паллетам и снижает потери на трение.
+    </div>
+  </aside>
+
+  <!-- SCROLL PROGRESS -->
+  <div class="scroll-progress-track">
+    <div id="scroll-progress-bar"></div>
+  </div>
+
+  <!-- BOTTOM INTERACTIVE DOCK -->
+  <nav class="hud-bottom" aria-label="Панель управления часовым механизмом">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Завод:</span>
+      <button class="ui-btn" id="btn-wind" title="Завести пружину барабана (+8 часов)">+ Завести головку</button>
+    </div>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label">Время ±12ч:</span>
+      <input type="range" class="ui-slider" id="slider-time" min="-720" max="720" step="1" value="0" aria-label="Смещение времени в минутах" />
+      <button class="ui-btn" id="btn-reset-time" title="Вернуть реальное время">Сейчас</button>
+    </div>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label">Скорость:</span>
+      <button class="ui-btn active" data-speed="1">1×</button>
+      <button class="ui-btn" data-speed="0.1">1/10</button>
+      <button class="ui-btn" data-speed="0.01">1/100</button>
+    </div>
+
+    <div class="ctrl-group">
+      <button class="ui-btn" id="btn-xray" title="Полупрозрачный режим мостов и корпуса">Рентген</button>
+      <button class="ui-btn" id="btn-loupe" title="Ювелирная лупа (или удерживайте Shift)">Лупа (Shift)</button>
+      <button class="ui-btn" id="btn-audio" title="Синтезатор звука Web Audio">Звук: Выкл</button>
+    </div>
+  </nav>
+
+  <!-- 8-STAGE SCROLL STORY (800vh) -->
+  <main id="scroll-container">
+    <!-- 1. HERO -->
+    <section class="story-section" data-stage="1">
+      <div class="story-card">
+        <span class="story-step">Глава I . Мануфактура</span>
+        <h1 class="story-heading">Калибр «АРГОН-IV»</h1>
+        <p class="story-body">
+          Высокая часовая механика в чистом математическом выражении. Все 76 деталей построены процедурно: циклоидальные зубья находятся в физическом зацеплении, а стрелки показывают ваше локальное время.
+        </p>
+        <div class="story-specs">
+          <div><span class="spec-k">ДЕТАЛЕЙ В СБОРЕ</span><span class="spec-v">76 КОМПОНЕНТОВ</span></div>
+          <div><span class="spec-k">КАМНЕЙ</span><span class="spec-v">21 РУБИН (КОРУНД)</span></div>
+          <div><span class="spec-k">ЗАПАС ХОДА</span><span class="spec-v">52 ЧАСА</span></div>
+          <div><span class="spec-k">ТОЧНОСТЬ</span><span class="spec-v">-1 / +2 СЕК/СУТ</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. THROUGH THE GLASS -->
+    <section class="story-section align-right" data-stage="2">
+      <div class="story-card">
+        <span class="story-step">Глава II . Проникновение</span>
+        <h2 class="story-heading">Сквозь сапфир и циферблат</h2>
+        <p class="story-body">
+          Выпуклое сапфировое стекло с двусторонним голубым антибликом открывает архитектуру калибра. Циферблат растворяется по шейдерной маске, обнажая стрелочный механизм и мосты с отделкой «женевские волны».
+        </p>
+      </div>
+    </section>
+
+    <!-- 3. EXPLODED VIEW -->
+    <section class="story-section" data-stage="3">
+      <div class="story-card">
+        <span class="story-step">Глава III . Деконструкция</span>
+        <h2 class="story-heading">Взрыв-схема в движении</h2>
+        <p class="story-body">
+          Девять конструктивных эшелонов расходятся вдоль главной оси, сохраняя синхронное вращение. Нажмите на любую выносную метку или деталь в 3D, чтобы изучить её сплав и назначение.
+        </p>
+      </div>
+    </section>
+
+    <!-- 4. ENERGY -->
+    <section class="story-section align-right" data-stage="4">
+      <div class="story-card">
+        <span class="story-step">Глава IV . Кинематическая цепь</span>
+        <h2 class="story-heading">Поток крутящего момента</h2>
+        <p class="story-body">
+          Пружина из сплава Nivaflex в заводном барабане отдаёт энергию через четырёхступенчатый ангренаж. Передаточное отношение от барабана к каретке турбийона составляет ровно 480:1.
+        </p>
+        <div class="story-specs">
+          <div><span class="spec-k">БАРАБАН - ЦЕНТР</span><span class="spec-v">96 : 12 (8.0×)</span></div>
+          <div><span class="spec-k">ЦЕНТР - ТРЕТЬЕ</span><span class="spec-v">80 : 10 (8.0×)</span></div>
+          <div><span class="spec-k">ТРЕТЬЕ - КАРЕТКА</span><span class="spec-v">75 : 10 (7.5×)</span></div>
+          <div><span class="spec-k">КАРЕТКА - СПУСК</span><span class="spec-v">96 : 6 (16.0×)</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. HEART / ESCAPEMENT -->
+    <section class="story-section" data-stage="5">
+      <div class="story-card">
+        <span class="story-step">Глава V . Швейцарский ход (Замедление 20×)</span>
+        <h2 class="story-heading">Сердцебиение: 8 ударов в секунду</h2>
+        <p class="story-body">
+          Время замедлено в 20 раз. Наблюдайте три фазы швейцарского анкерного спуска: паллета удерживает зуб в фазе покоя, баланс освобождает вилку, и скос зуба передаёт импульс, заставляя спираль «дышать».
+        </p>
+      </div>
+    </section>
+
+    <!-- 6. TOURBILLON -->
+    <section class="story-section align-right" data-stage="6">
+      <div class="story-card">
+        <span class="story-step">Глава VI . Гравитационная компенсация</span>
+        <h2 class="story-heading">Минутный турбийон Бреге</h2>
+        <p class="story-body">
+          Абрахам-Луи Бреге запатентовал турбийон в 1801 году, чтобы победить земное притяжение. Помещая баланс, спираль и спуск во вращающуюся титановую каретку (1 оборот в минуту), калибр усредняет позиционные погрешности в вертикальных положениях часов.
+        </p>
+      </div>
+    </section>
+
+    <!-- 7. ASSEMBLY -->
+    <section class="story-section" data-stage="7">
+      <div class="story-card">
+        <span class="story-step">Глава VII . Интеграция</span>
+        <h2 class="story-heading">Сборка и посадка</h2>
+        <p class="story-body">
+          Узлы возвращаются в посадочные гнезда главной платины. Золотые шатоны фиксируют рубиновые опоры, воронёные винты притягивают мосты с зеркальным англажем, и сапфировое стекло герметизирует корпус.
+        </p>
+      </div>
+    </section>
+
+    <!-- 8. CONFIGURATOR -->
+    <section class="story-section align-right" data-stage="8">
+      <div class="story-card">
+        <span class="story-step">Глава VIII . Ателье заказчика</span>
+        <h2 class="story-heading">Персональная конфигурация</h2>
+        <p class="story-body">
+          Выберите исполнение корпуса и циферблата. Смена материалов проходит процедурной сферической волной по геометрии часов. Вращайте модель мышью или используйте лупу (Shift).
+        </p>
+        <div class="configurator-grid">
+          <div>
+            <div class="conf-row-title">Материал корпуса</div>
+            <div class="conf-buttons" role="group" aria-label="Выбор материала корпуса">
+              <button class="ui-btn active" data-case="steel">Сталь 904L</button>
+              <button class="ui-btn" data-case="gold">Розовое золото</button>
+              <button class="ui-btn" data-case="titanium">Титан Grade 5</button>
+              <button class="ui-btn" data-case="ceramic">Чёрная керамика</button>
+            </div>
+          </div>
+          <div>
+            <div class="conf-row-title">Исполнение циферблата</div>
+            <div class="conf-buttons" role="group" aria-label="Выбор циферблата">
+              <button class="ui-btn" data-dial="enamel">Белая эмаль</button>
+              <button class="ui-btn active" data-dial="aventurine">Авантюрин</button>
+              <button class="ui-btn" data-dial="skeleton">Скелетон</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+    import gsap from 'gsap';
+    import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    /* ==========================================================================
+       0. PRELOADER: PROCEDURAL CYCLOIDAL GEAR MACHINING ANIMATION
+       ========================================================================== */
+    const preloaderEl = document.getElementById('preloader');
+    const preloaderCanvas = document.getElementById('preloader-canvas');
+    const preloaderStatus = document.getElementById('preloader-status');
+    const pCtx = preloaderCanvas.getContext('2d');
+    let preloaderProgress = 0;
+    let preloaderAngle = 0;
+    let preloaderDone = false;
+
+    function drawPreloaderGear(progress, rotAngle) {
+      const w = preloaderCanvas.width;
+      const h = preloaderCanvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      pCtx.clearRect(0, 0, w, h);
+
+      const teeth = 24;
+      const activeTeeth = Math.max(1, Math.floor(progress * teeth));
+      const pitchR = 155;
+      const rootR = 136;
+      const tipR = 178;
+
+      pCtx.save();
+      pCtx.translate(cx, cy);
+      pCtx.rotate(rotAngle);
+
+      // Reference metrology circles
+      pCtx.strokeStyle = 'rgba(212, 175, 112, 0.16)';
+      pCtx.lineWidth = 1;
+      pCtx.setLineDash([4, 6]);
+      pCtx.beginPath();
+      pCtx.arc(0, 0, pitchR, 0, Math.PI * 2);
+      pCtx.stroke();
+      pCtx.setLineDash([]);
+
+      // Gear outer profile tooth by tooth
+      pCtx.beginPath();
+      const step = (Math.PI * 2) / teeth;
+      for (let i = 0; i < teeth; i++) {
+        const a0 = i * step;
+        const cut = i < activeTeeth;
+        const rCurrentTip = cut ? tipR : pitchR;
+        const rCurrentRoot = cut ? rootR : pitchR;
+
+        const t0 = a0;
+        const t1 = a0 + step * 0.22;
+        const t2 = a0 + step * 0.36;
+        const t3 = a0 + step * 0.50;
+        const t4 = a0 + step * 0.64;
+
+        if (i === 0) {
+          pCtx.moveTo(Math.cos(t0) * rCurrentRoot, Math.sin(t0) * rCurrentRoot);
+        } else {
+          pCtx.lineTo(Math.cos(t0) * rCurrentRoot, Math.sin(t0) * rCurrentRoot);
+        }
+        pCtx.lineTo(Math.cos(t1) * rCurrentRoot, Math.sin(t1) * rCurrentRoot);
+        pCtx.lineTo(Math.cos(t1) * pitchR, Math.sin(t1) * pitchR);
+        pCtx.quadraticCurveTo(
+          Math.cos(t2) * (rCurrentTip + 4),
+          Math.sin(t2) * (rCurrentTip + 4),
+          Math.cos(t3) * rCurrentTip,
+          Math.sin(t3) * rCurrentTip
+        );
+        pCtx.quadraticCurveTo(
+          Math.cos(t4) * (rCurrentTip + 4),
+          Math.sin(t4) * (rCurrentTip + 4),
+          Math.cos(t4) * pitchR,
+          Math.sin(t4) * pitchR
+        );
+        pCtx.lineTo(Math.cos(t4) * rCurrentRoot, Math.sin(t4) * rCurrentRoot);
+      }
+      pCtx.closePath();
+      const grad = pCtx.createRadialGradient(0, 0, 20, 0, 0, tipR);
+      grad.addColorStop(0, 'rgba(212, 175, 112, 0.25)');
+      grad.addColorStop(1, 'rgba(212, 175, 112, 0.05)');
+      pCtx.fillStyle = grad;
+      pCtx.fill();
+      pCtx.strokeStyle = '#d4af70';
+      pCtx.lineWidth = 2.2;
+      pCtx.stroke();
+
+      // Inner spokes & hub
+      pCtx.beginPath();
+      pCtx.arc(0, 0, 38, 0, Math.PI * 2);
+      pCtx.strokeStyle = 'rgba(243, 212, 156, 0.7)';
+      pCtx.stroke();
+
+      for (let s = 0; s < 5; s++) {
+        const sa = (s * Math.PI * 2) / 5;
+        pCtx.beginPath();
+        pCtx.moveTo(Math.cos(sa) * 38, Math.sin(sa) * 38);
+        pCtx.lineTo(Math.cos(sa) * (rootR - 14), Math.sin(sa) * (rootR - 14));
+        pCtx.stroke();
+      }
+
+      // Laser spark at current machined tooth
+      if (progress < 0.96) {
+        const sparkAngle = activeTeeth * step + step * 0.36;
+        const sx = Math.cos(sparkAngle) * tipR;
+        const sy = Math.sin(sparkAngle) * tipR;
+        pCtx.fillStyle = '#fff5d6';
+        pCtx.shadowColor = '#f3d49c';
+        pCtx.shadowBlur = 18;
+        pCtx.beginPath();
+        pCtx.arc(sx, sy, 5, 0, Math.PI * 2);
+        pCtx.fill();
+        pCtx.shadowBlur = 0;
+      }
+
+      pCtx.restore();
+    }
+
+    /* ==========================================================================
+       1. SYNTHESIZED WEB AUDIO HOROLOGICAL ENGINE (MUTED BY DEFAULT)
+       ========================================================================== */
+    class HorologyAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = false;
+        this.ambientGain = null;
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+
+        // Subtle dark studio ambient room tone
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          output[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = output[i];
+          output[i] *= 0.05;
+        }
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 160;
+
+        this.ambientGain = this.ctx.createGain();
+        this.ambientGain.gain.value = 0.0;
+
+        whiteNoise.connect(filter);
+        filter.connect(this.ambientGain);
+        this.ambientGain.connect(this.ctx.destination);
+        whiteNoise.start(0);
+      }
+
+      toggle() {
+        this.init();
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        this.enabled = !this.enabled;
+        if (this.ambientGain) {
+          this.ambientGain.gain.setTargetAtTime(this.enabled ? 0.14 : 0.0, this.ctx.currentTime, 0.2);
+        }
+        return this.enabled;
+      }
+
+      // Three-impulse Swiss lever escapement tick (Unlock + Impulse + Lock)
+      playEscapementTick(isEvenBeat, timeScale = 1.0) {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const baseFreq = isEvenBeat ? 4200 : 3950;
+
+        // 1. Unlock impulse
+        this.triggerMicroClick(now, baseFreq * 0.85, 0.012, 0.035);
+        // 2. Sliding impulse
+        const gap1 = Math.min(0.04, 0.006 / Math.max(0.05, timeScale));
+        this.triggerMicroClick(now + gap1, baseFreq * 1.15, 0.008, 0.025);
+        // 3. Drop & locking ring
+        const gap2 = Math.min(0.09, 0.014 / Math.max(0.05, timeScale));
+        this.triggerMicroClick(now + gap2, baseFreq, 0.018, 0.065);
+      }
+
+      triggerMicroClick(time, freq, duration, volume) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, time);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.4, time + duration);
+
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(freq, time);
+        filter.Q.setValueAtTime(6.0, time);
+
+        gain.gain.setValueAtTime(0.0001, time);
+        gain.gain.linearRampToValueAtTime(volume, time + 0.0012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(time);
+        osc.stop(time + duration + 0.005);
+      }
+
+      // Ratchet click when winding crown
+      playRatchetClick() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        this.triggerMicroClick(now, 2600, 0.025, 0.09);
+        this.triggerMicroClick(now + 0.008, 5200, 0.015, 0.05);
+      }
+
+      // Metallic snap during Stage 7 assembly
+      playAssemblySnap(pitchScale = 1.0) {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        this.triggerMicroClick(now, 1400 * pitchScale, 0.06, 0.11);
+        this.triggerMicroClick(now + 0.01, 3100 * pitchScale, 0.04, 0.06);
+      }
+    }
+
+    const audio = new HorologyAudioEngine();
+
+    /* ==========================================================================
+       2. PROCEDURAL TEXTURES & STUDIO ENVIRONMENT (PMREM)
+       ========================================================================== */
+    function createCotesDeGeneveTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      const stripes = 14;
+      const stripeW = canvas.width / stripes;
+
+      for (let i = 0; i < stripes; i++) {
+        const x0 = i * stripeW;
+        const grad = ctx.createLinearGradient(x0, 0, x0 + stripeW, 0);
+        grad.addColorStop(0.0, '#686c73');
+        grad.addColorStop(0.15, '#9ea3ac');
+        grad.addColorStop(0.5, '#d5d8de');
+        grad.addColorStop(0.85, '#8e939c');
+        grad.addColorStop(1.0, '#585c63');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x0, 0, stripeW, canvas.height);
+
+        // Fine curved brushing arcs inside each rib
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        for (let y = -100; y < canvas.height + 100; y += 5) {
+          ctx.beginPath();
+          ctx.moveTo(x0, y);
+          ctx.quadraticCurveTo(x0 + stripeW * 0.5, y + 18, x0 + stripeW, y);
+          ctx.stroke();
+        }
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2, 2);
+      return tex;
+    }
+
+    function createPerlageTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#7c8088';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const step = 36;
+      for (let y = 0; y <= canvas.height + step; y += step * 0.75) {
+        const offset = (Math.round(y / (step * 0.75)) % 2) * (step * 0.5);
+        for (let x = -step; x <= canvas.width + step; x += step) {
+          const cx = x + offset;
+          const cy = y;
+          const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, step * 0.62);
+          grad.addColorStop(0.0, '#d8dce2');
+          grad.addColorStop(0.45, '#8f949d');
+          grad.addColorStop(0.85, '#62666e');
+          grad.addColorStop(1.0, '#b5bac2');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(cx, cy, step * 0.62, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(3, 3);
+      return tex;
+    }
+
+    function createAventurineDialTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      // Deep midnight aventurine glass base
+      const bg = ctx.createRadialGradient(512, 512, 40, 512, 512, 512);
+      bg.addColorStop(0, '#0c1324');
+      bg.addColorStop(0.7, '#060a14');
+      bg.addColorStop(1, '#03050a');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, 1024, 1024);
+
+      // Copper & gold crystalline inclusions
+      for (let i = 0; i < 2400; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 1024;
+        const r = Math.random() * 1.9 + 0.3;
+        const alpha = Math.random() * 0.85 + 0.15;
+        ctx.fillStyle = Math.random() > 0.3
+          ? `rgba(235, 190, 120, ${alpha})`
+          : `rgba(160, 200, 255, ${alpha * 0.7})`;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Subtle guilloche chapter rings
+      ctx.strokeStyle = 'rgba(212, 175, 112, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(512, 512, 460, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.font = '600 28px "Cormorant Garamond", serif';
+      ctx.fillStyle = '#e6c587';
+      ctx.textAlign = 'center';
+      ctx.fillText('АРГОН-IV', 512, 310);
+      ctx.font = '400 16px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#9a9994';
+      ctx.fillText('ТУРБИЙОН • 28 800 ПК/Ч', 512, 340);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function createEnamelDialTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      const bg = ctx.createRadialGradient(512, 512, 50, 512, 512, 512);
+      bg.addColorStop(0, '#fbfaf5');
+      bg.addColorStop(0.85, '#efece4');
+      bg.addColorStop(1, '#dcd7cb');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, 1024, 1024);
+
+      ctx.strokeStyle = '#1b1d22';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(512, 512, 460, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.font = '700 30px "Cormorant Garamond", serif';
+      ctx.fillStyle = '#141619';
+      ctx.textAlign = 'center';
+      ctx.fillText('АРГОН-IV', 512, 310);
+      ctx.font = '500 16px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#45484f';
+      ctx.fillText('GRAND FEU • МАНУФАКТУРА', 512, 340);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function buildStudioEnvironment(renderer) {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+
+      const envScene = new THREE.Scene();
+      envScene.background = new THREE.Color(0x050608);
+
+      // Softbox 1: Main overhead warm softbox
+      const sb1 = new THREE.Mesh(
+        new THREE.PlaneGeometry(18, 9),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(5.5, 5.0, 4.3), side: THREE.DoubleSide })
+      );
+      sb1.position.set(0, 11, 5);
+      sb1.lookAt(0, 0, 0);
+      envScene.add(sb1);
+
+      // Softbox 2: Cool steel key strip left
+      const sb2 = new THREE.Mesh(
+        new THREE.PlaneGeometry(5, 16),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(3.6, 4.2, 5.4), side: THREE.DoubleSide })
+      );
+      sb2.position.set(-12, 3, 4);
+      sb2.lookAt(0, 0, 0);
+      envScene.add(sb2);
+
+      // Softbox 3: Warm gold rim light right
+      const sb3 = new THREE.Mesh(
+        new THREE.PlaneGeometry(6, 14),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(5.8, 4.1, 2.4), side: THREE.DoubleSide })
+      );
+      sb3.position.set(12, 2, -5);
+      sb3.lookAt(0, 0, 0);
+      envScene.add(sb3);
+
+      // Subtle studio floor bounce
+      const sb4 = new THREE.Mesh(
+        new THREE.RingGeometry(6, 14, 48),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 0.85, 1.0), side: THREE.DoubleSide })
+      );
+      sb4.rotation.x = Math.PI / 2;
+      sb4.position.y = -10;
+      envScene.add(sb4);
+
+      const envMap = pmrem.fromScene(envScene, 0.035).texture;
+      pmrem.dispose();
+      return envMap;
+    }
+
+    /* ==========================================================================
+       3. PROCEDURAL HOROLOGICAL GEOMETRY GENERATORS (CYCLOIDAL GEARS)
+       ========================================================================== */
+    // Generates an authentic cycloidal watch wheel with gothic/ogival addendum,
+    // inner rim, beveled spokes, and central collet hole.
+    function createCycloidalGearGeometry({
+      teeth = 60,
+      pitchRadius = 1.0,
+      thickness = 0.08,
+      spokes = 5,
+      innerRadiusRatio = 0.78,
+      hubRadius = 0.16,
+      boreRadius = 0.05
+    }) {
+      const shape = new THREE.Shape();
+      const module = (2 * pitchRadius) / teeth;
+      const addendum = 0.95 * module;
+      const dedendum = 1.15 * module;
+      const rRoot = Math.max(0.05, pitchRadius - dedendum);
+      const rTip = pitchRadius + addendum;
+      const step = (Math.PI * 2) / teeth;
+
+      for (let i = 0; i < teeth; i++) {
+        const a0 = i * step;
+        // Tooth occupies 46% of angular pitch, space occupies 54% for backlash-free visual mesh
+        const tRootStart = a0;
+        const tFlankL = a0 + step * 0.27;
+        const tOgiveL = a0 + step * 0.39;
+        const tTip = a0 + step * 0.50;
+        const tOgiveR = a0 + step * 0.61;
+        const tFlankR = a0 + step * 0.73;
+
+        const p0x = Math.cos(tRootStart) * rRoot;
+        const p0y = Math.sin(tRootStart) * rRoot;
+
+        if (i === 0) {
+          shape.moveTo(p0x, p0y);
+        } else {
+          shape.lineTo(p0x, p0y);
+        }
+
+        // Root arc
+        shape.absarc(0, 0, rRoot, tRootStart, tFlankL, false);
+        // Radial dedendum flank up to pitch circle
+        shape.lineTo(Math.cos(tFlankL) * pitchRadius, Math.sin(tFlankL) * pitchRadius);
+        // Epicycloidal ogive curve to pointed tooth tip
+        shape.quadraticCurveTo(
+          Math.cos(tOgiveL) * (rTip - module * 0.15),
+          Math.sin(tOgiveL) * (rTip - module * 0.15),
+          Math.cos(tTip) * rTip,
+          Math.sin(tTip) * rTip
+        );
+        // Epicycloidal ogive curve back down to pitch circle
+        shape.quadraticCurveTo(
+          Math.cos(tOgiveR) * (rTip - module * 0.15),
+          Math.sin(tOgiveR) * (rTip - module * 0.15),
+          Math.cos(tFlankR) * pitchRadius,
+          Math.sin(tFlankR) * pitchRadius
+        );
+        // Radial dedendum flank down to root
+        shape.lineTo(Math.cos(tFlankR) * rRoot, Math.sin(tFlankR) * rRoot);
+      }
+      shape.closePath();
+
+      // Cut out windows between spokes if wheel is large enough
+      const rInner = rRoot * innerRadiusRatio;
+      if (spokes > 0 && rInner > hubRadius * 1.35) {
+        const winStep = (Math.PI * 2) / spokes;
+        const spokeHalfAngle = Math.atan2(module * 1.4, rInner * 0.5);
+        for (let s = 0; s < spokes; s++) {
+          const sa0 = s * winStep + spokeHalfAngle;
+          const sa1 = (s + 1) * winStep - spokeHalfAngle;
+          if (sa1 > sa0 + 0.08) {
+            const hole = new THREE.Path();
+            hole.moveTo(Math.cos(sa0) * hubRadius, Math.sin(sa0) * hubRadius);
+            hole.absarc(0, 0, rInner, sa0, sa1, false);
+            hole.absarc(0, 0, hubRadius, sa1, sa0, true);
+            hole.closePath();
+            shape.holes.push(hole);
+          }
+        }
+      }
+
+      // Central bore hole
+      if (boreRadius > 0 && boreRadius < hubRadius) {
+        const bore = new THREE.Path();
+        bore.absarc(0, 0, boreRadius, 0, Math.PI * 2, true);
+        shape.holes.push(bore);
+      }
+
+      const geom = new THREE.ExtrudeGeometry(shape, {
+        depth: thickness,
+        bevelEnabled: true,
+        bevelThickness: Math.min(0.012, thickness * 0.18),
+        bevelSize: Math.min(0.01, module * 0.18),
+        bevelSegments: 2,
+        curveSegments: 6
+      });
+      geom.center();
+      return geom;
+    }
+
+    // Swiss Club-Tooth Escape Wheel (15 raked teeth)
+    function createEscapeWheelGeometry(pitchRadius = 0.42, thickness = 0.045) {
+      const teeth = 15;
+      const shape = new THREE.Shape();
+      const rRoot = pitchRadius * 0.68;
+      const rTip = pitchRadius * 1.08;
+      const step = (Math.PI * 2) / teeth;
+
+      for (let i = 0; i < teeth; i++) {
+        const a0 = i * step;
+        const aRootEnd = a0 + step * 0.55;
+        const aClubHeel = a0 + step * 0.78;
+        const aClubLock = a0 + step * 0.92;
+        const aBackCut = a0 + step * 0.66;
+
+        if (i === 0) {
+          shape.moveTo(Math.cos(a0) * rRoot, Math.sin(a0) * rRoot);
+        } else {
+          shape.lineTo(Math.cos(a0) * rRoot, Math.sin(a0) * rRoot);
+        }
+        shape.absarc(0, 0, rRoot, a0, aRootEnd, false);
+        // Raked leading edge of escape tooth
+        shape.lineTo(Math.cos(aClubHeel) * (rTip * 0.96), Math.sin(aClubHeel) * (rTip * 0.96));
+        // Impulse plane at tip
+        shape.lineTo(Math.cos(aClubLock) * rTip, Math.sin(aClubLock) * rTip);
+        // Undercut trailing edge
+        shape.lineTo(Math.cos(aBackCut) * (rRoot * 1.05), Math.sin(aBackCut) * (rRoot * 1.05));
+      }
+      shape.closePath();
+
+      // 3 aerodynamic cutouts
+      const hubR = rRoot * 0.34;
+      const rimR = rRoot * 0.88;
+      for (let s = 0; s < 3; s++) {
+        const sa0 = (s * Math.PI * 2) / 3 + 0.16;
+        const sa1 = ((s + 1) * Math.PI * 2) / 3 - 0.16;
+        const hole = new THREE.Path();
+        hole.moveTo(Math.cos(sa0) * hubR, Math.sin(sa0) * hubR);
+        hole.absarc(0, 0, rimR, sa0, sa1, false);
+        hole.absarc(0, 0, hubR, sa1, sa0, true);
+        hole.closePath();
+        shape.holes.push(hole);
+      }
+
+      const geom = new THREE.ExtrudeGeometry(shape, {
+        depth: thickness,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.005,
+        bevelSegments: 2
+      });
+      geom.center();
+      return geom;
+    }
+
+    // Dynamic Breathing Hairspring (Archimedean spiral updated per frame)
+    function createHairspringMesh(material) {
+      const turns = 11.5;
+      const pointsCount = 260;
+      const positions = new Float32Array(pointsCount * 3);
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const line = new THREE.Line(geom, material);
+      line.userData.turns = turns;
+      line.userData.pointsCount = pointsCount;
+      return line;
+    }
+
+    function updateHairspring(line, balanceAngleRad, rInner = 0.07, rOuter = 0.44) {
+      const pos = line.geometry.attributes.position.array;
+      const n = line.userData.pointsCount;
+      const turns = line.userData.turns;
+      const totalTheta = turns * Math.PI * 2;
+      // Breathing factor: inner coils twist by balanceAngleRad while outer stud is fixed
+      const breath = Math.sin(balanceAngleRad) * 0.032;
+
+      for (let i = 0; i < n; i++) {
+        const u = i / (n - 1);
+        // Smooth radial expansion/contraction concentrated in middle coils
+        const radialMod = Math.sin(u * Math.PI) * breath;
+        const r = rInner + (rOuter - rInner) * u + radialMod;
+        // Angular twist interpolated from balanceAngleRad at collet (u=0) to 0 at stud (u=1)
+        const theta = u * totalTheta + (1.0 - u) * balanceAngleRad * 0.45;
+        pos[i * 3 + 0] = Math.cos(theta) * r;
+        pos[i * 3 + 1] = Math.sin(theta) * r;
+        pos[i * 3 + 2] = 0;
+      }
+      line.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Dynamic Mainspring inside Barrel (tightens with powerReserve 0..1)
+    function updateMainspringGeometry(line, powerReserve, rArbor = 0.24, rDrum = 1.02) {
+      const pos = line.geometry.attributes.position.array;
+      const n = pos.length / 3;
+      const turns = 6.5;
+      const totalTheta = turns * Math.PI * 2;
+
+      for (let i = 0; i < n; i++) {
+        const u = i / (n - 1);
+        // When wound (powerReserve -> 1), coils bias closer to the central arbor
+        const curvePower = 1.35 - powerReserve * 0.65;
+        const shapedU = Math.pow(u, curvePower);
+        const r = rArbor + (rDrum - rArbor) * shapedU;
+        const theta = u * totalTheta + powerReserve * Math.PI * 4 * (1 - u);
+        pos[i * 3 + 0] = Math.cos(theta) * r;
+        pos[i * 3 + 1] = Math.sin(theta) * r;
+        pos[i * 3 + 2] = 0;
+      }
+      line.geometry.attributes.position.needsUpdate = true;
+    }
+
+    /* ==========================================================================
+       4. SCENE SETUP, LIGHTING, MATERIALS & CUSTOM SHADERS
+       ========================================================================== */
+    const canvas = document.getElementById('viewport');
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: false,
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.AgXToneMapping || THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x060709);
+    const envMap = buildStudioEnvironment(renderer);
+    scene.environment = envMap;
+
+    const camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, -5.2, 8.8);
+
+    // Studio 3-Light Setup
+    const keyLight = new THREE.SpotLight(0xfff1dc, 42);
+    keyLight.position.set(5.5, 6.5, 8.5);
+    keyLight.angle = Math.PI / 4;
+    keyLight.penumbra = 0.85;
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.bias = -0.0004;
+    scene.add(keyLight);
+
+    const rimLight = new THREE.SpotLight(0x90b4ff, 28);
+    rimLight.position.set(-7.0, -4.5, 5.5);
+    rimLight.angle = Math.PI / 3;
+    rimLight.penumbra = 0.9;
+    scene.add(rimLight);
+
+    const warmBackLight = new THREE.PointLight(0xd4af70, 14, 20);
+    warmBackLight.position.set(0, 5.5, -5.0);
+    scene.add(warmBackLight);
+
+    // Global Shader Uniforms for Dissolve (Stage 2) and Wave Configurator (Stage 8)
+    const shaderUniforms = {
+      uDialDissolve: { value: 0.0 },
+      uWaveProgress: { value: 1.5 },
+      uWaveOrigin: { value: new THREE.Vector3(0, 0, 0) },
+      uPrevCaseColor: { value: new THREE.Color(0xd8dde4) },
+      uTargetCaseColor: { value: new THREE.Color(0xd8dde4) },
+      uTorquePulse: { value: 0.0 },
+      uXrayAlpha: { value: 1.0 }
+    };
+
+    const cotesTex = createCotesDeGeneveTexture();
+    const perlageTex = createPerlageTexture();
+    const aventurineTex = createAventurineDialTexture();
+    const enamelTex = createEnamelDialTexture();
+
+    // Shared Horological Materials
+    const materials = {
+      caseMat: new THREE.MeshPhysicalMaterial({
+        color: 0xd8dde4,
+        metalness: 0.96,
+        roughness: 0.12,
+        anisotropy: 0.65,
+        anisotropyRotation: 0.4,
+        clearcoat: 0.25,
+        envMapIntensity: 1.7
+      }),
+      bridgeMat: new THREE.MeshPhysicalMaterial({
+        color: 0xbec3cc,
+        metalness: 0.92,
+        roughness: 0.24,
+        roughnessMap: cotesTex,
+        bumpMap: cotesTex,
+        bumpScale: 0.015,
+        anisotropy: 0.85,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.08,
+        envMapIntensity: 1.5
+      }),
+      mainplateMat: new THREE.MeshPhysicalMaterial({
+        color: 0x959aa3,
+        metalness: 0.9,
+        roughness: 0.28,
+        roughnessMap: perlageTex,
+        bumpMap: perlageTex,
+        bumpScale: 0.018,
+        anisotropy: 0.7,
+        envMapIntensity: 1.3
+      }),
+      goldGearMat: new THREE.MeshPhysicalMaterial({
+        color: 0xe2b66d,
+        metalness: 0.95,
+        roughness: 0.16,
+        anisotropy: 0.55,
+        envMapIntensity: 1.8
+      }),
+      roseGoldMat: new THREE.MeshPhysicalMaterial({
+        color: 0xe5a687,
+        metalness: 0.96,
+        roughness: 0.14,
+        envMapIntensity: 1.8
+      }),
+      steelPinionMat: new THREE.MeshPhysicalMaterial({
+        color: 0xe6ebf2,
+        metalness: 0.98,
+        roughness: 0.09,
+        envMapIntensity: 1.9
+      }),
+      bluedSteelMat: new THREE.MeshPhysicalMaterial({
+        color: 0x164996,
+        metalness: 0.92,
+        roughness: 0.14,
+        iridescence: 0.65,
+        iridescenceIOR: 1.5,
+        clearcoat: 0.6,
+        envMapIntensity: 1.9
+      }),
+      rubyMat: new THREE.MeshPhysicalMaterial({
+        color: 0xd91438,
+        metalness: 0.02,
+        roughness: 0.05,
+        transmission: 0.88,
+        ior: 1.76,
+        thickness: 0.35,
+        attenuationColor: new THREE.Color(0xb80b2c),
+        attenuationDistance: 0.4,
+        envMapIntensity: 2.2
+      }),
+      sapphireMat: new THREE.MeshPhysicalMaterial({
+        color: 0xeef5ff,
+        metalness: 0.0,
+        roughness: 0.03,
+        transmission: 0.95,
+        ior: 1.77,
+        thickness: 0.22,
+        specularColor: new THREE.Color(0x5599ff),
+        specularIntensity: 0.9,
+        transparent: true,
+        opacity: 0.98,
+        envMapIntensity: 2.0
+      }),
+      titaniumCageMat: new THREE.MeshPhysicalMaterial({
+        color: 0xc2c8d1,
+        metalness: 0.94,
+        roughness: 0.11,
+        clearcoat: 0.4,
+        envMapIntensity: 1.9
+      }),
+      dialMat: new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        map: aventurineTex,
+        metalness: 0.35,
+        roughness: 0.18,
+        clearcoat: 0.85,
+        clearcoatRoughness: 0.06,
+        transparent: true,
+        envMapIntensity: 1.5
+      }),
+      hairspringMat: new THREE.LineBasicMaterial({
+        color: 0x4da0ff,
+        linewidth: 2
+      }),
+      mainspringMat: new THREE.LineBasicMaterial({
+        color: 0x8ea0b8,
+        linewidth: 2
+      })
+    };
+
+    // Inject spherical wave shader into Case Material for Configurator wave transitions
+    materials.caseMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uWaveProgress = shaderUniforms.uWaveProgress;
+      shader.uniforms.uWaveOrigin = shaderUniforms.uWaveOrigin;
+      shader.uniforms.uPrevCaseColor = shaderUniforms.uPrevCaseColor;
+      shader.uniforms.uTargetCaseColor = shaderUniforms.uTargetCaseColor;
+
+      shader.vertexShader = `
+        varying vec3 vWorldPosWave;
+      ` + shader.vertexShader.replace(
+        '#include <worldpos_vertex>',
+        `#include <worldpos_vertex>
+         vWorldPosWave = (modelMatrix * vec4(transformed, 1.0)).xyz;`
+      );
+
+      shader.fragmentShader = `
+        uniform float uWaveProgress;
+        uniform vec3 uWaveOrigin;
+        uniform vec3 uPrevCaseColor;
+        uniform vec3 uTargetCaseColor;
+        varying vec3 vWorldPosWave;
+      ` + shader.fragmentShader.replace(
+        'vec4 diffuseColor = vec4( diffuse, opacity );',
+        `float distW = distance(vWorldPosWave, uWaveOrigin);
+         float waveRadius = uWaveProgress * 9.5;
+         float edgeW = smoothstep(waveRadius - 0.35, waveRadius + 0.05, distW);
+         vec3 mixedCol = mix(uTargetCaseColor, uPrevCaseColor, edgeW);
+         float rimGlow = smoothstep(0.32, 0.0, abs(distW - waveRadius)) * step(uWaveProgress, 1.15);
+         mixedCol += vec3(0.95, 0.78, 0.42) * rimGlow * 2.2;
+         vec4 diffuseColor = vec4( mixedCol, opacity );`
+      );
+    };
+
+    // Inject radial dissolve shader with glowing gold edge into Dial Material (Stage 2)
+    materials.dialMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uDialDissolve = shaderUniforms.uDialDissolve;
+      shader.vertexShader = `
+        varying vec3 vLocalDialPos;
+      ` + shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+         vLocalDialPos = position;`
+      );
+      shader.fragmentShader = `
+        uniform float uDialDissolve;
+        varying vec3 vLocalDialPos;
+      ` + shader.fragmentShader.replace(
+        '#include <dithering_fragment>',
+        `float radNorm = length(vLocalDialPos.xy) / 3.15;
+         float angleNoise = sin(atan(vLocalDialPos.y, vLocalDialPos.x) * 12.0) * 0.04;
+         float maskVal = radNorm + angleNoise;
+         if (maskVal < uDialDissolve * 1.18) discard;
+         float glowEdge = smoothstep(uDialDissolve * 1.18 + 0.09, uDialDissolve * 1.18, maskVal) * step(0.01, uDialDissolve);
+         gl_FragColor.rgb += vec3(1.0, 0.78, 0.35) * glowEdge * 3.2;
+         #include <dithering_fragment>`
+      );
+    };
+
+    /* ==========================================================================
+       5. PROCEDURAL ASSEMBLY OF THE "АРГОН-IV" CALIBER (76+ DISTINCT PARTS)
+       ========================================================================== */
+    const watchRoot = new THREE.Group();
+    scene.add(watchRoot);
+
+    // Studio dark slate pedestal underneath the watch
+    const pedestalGeo = new THREE.CylinderGeometry(5.5, 6.2, 0.8, 64);
+    const pedestalMat = new THREE.MeshStandardMaterial({
+      color: 0x0d0f13,
+      roughness: 0.75,
+      metalness: 0.15,
+      bumpMap: perlageTex,
+      bumpScale: 0.01
+    });
+    const pedestalMesh = new THREE.Mesh(pedestalGeo, pedestalMat);
+    pedestalMesh.rotation.x = Math.PI / 2;
+    pedestalMesh.position.set(0, 0, -1.65);
+    pedestalMesh.receiveShadow = true;
+    scene.add(pedestalMesh);
+
+    // Contact shadow plane
+    const contactShadowGeo = new THREE.PlaneGeometry(8.5, 8.5);
+    const contactShadowCanvas = document.createElement('canvas');
+    contactShadowCanvas.width = 256;
+    contactShadowCanvas.height = 256;
+    const csCtx = contactShadowCanvas.getContext('2d');
+    const csGrad = csCtx.createRadialGradient(128, 128, 10, 128, 128, 120);
+    csGrad.addColorStop(0, 'rgba(0,0,0,0.85)');
+    csGrad.addColorStop(0.6, 'rgba(0,0,0,0.35)');
+    csGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    csCtx.fillStyle = csGrad;
+    csCtx.fillRect(0, 0, 256, 256);
+    const contactShadowMesh = new THREE.Mesh(
+      contactShadowGeo,
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(contactShadowCanvas), transparent: true, depthWrite: false })
+    );
+    contactShadowMesh.position.set(0, 0, -1.23);
+    scene.add(contactShadowMesh);
+
+    // 9 Exploded View Layer Groups
+    const layers = {
+      crystal: new THREE.Group(),      // Layer 0: Sapphire front & rehaut (+3.4z)
+      hands: new THREE.Group(),        // Layer 1: Hands (+2.6z)
+      dial: new THREE.Group(),         // Layer 2: Dial & applied indices (+1.8z)
+      bridges: new THREE.Group(),      // Layer 3: Bridges & Ratchet/PR (+1.0z)
+      train: new THREE.Group(),        // Layer 4: Gear train (+0.3z)
+      tourbillon: new THREE.Group(),   // Layer 5: Tourbillon carriage & escapement (-0.3z)
+      barrel: new THREE.Group(),       // Layer 6: Mainspring barrel (-1.0z)
+      mainplate: new THREE.Group(),    // Layer 7: Mainplate, stem, screws, jewels (-1.8z)
+      caseback: new THREE.Group()      // Layer 8: Case, lugs, crown, exhibition back (-2.7z)
+    };
+
+    const layerSpecs = [
+      { group: layers.crystal, zBase: 0.56, zExplode: 3.8, rotExplode: 0.15 },
+      { group: layers.hands, zBase: 0.42, zExplode: 2.9, rotExplode: -0.12 },
+      { group: layers.dial, zBase: 0.30, zExplode: 2.0, rotExplode: 0.08 },
+      { group: layers.bridges, zBase: 0.16, zExplode: 1.15, rotExplode: -0.10 },
+      { group: layers.train, zBase: 0.04, zExplode: 0.35, rotExplode: 0.06 },
+      { group: layers.tourbillon, zBase: 0.02, zExplode: -0.45, rotExplode: -0.14 },
+      { group: layers.barrel, zBase: 0.0, zExplode: -1.30, rotExplode: 0.10 },
+      { group: layers.mainplate, zBase: -0.18, zExplode: -2.25, rotExplode: -0.08 },
+      { group: layers.caseback, zBase: -0.05, zExplode: -3.30, rotExplode: 0.12 }
+    ];
+
+    layerSpecs.forEach(ls => {
+      ls.group.position.z = ls.zBase;
+      watchRoot.add(ls.group);
+    });
+
+    const interactiveParts = [];
+    function registerPart(mesh, info) {
+      mesh.userData.partInfo = info;
+      mesh.traverse(child => {
+        if (child.isMesh) {
+          child.userData.partInfo = info;
+          child.castShadow = true;
+          child.receiveShadow = true;
+          interactiveParts.push(child);
+        }
+      });
+    }
+
+    // Key kinematic coordinates in the movement plane (radius = 3.0 units)
+    const POS_BARREL = new THREE.Vector3(-1.05, 1.05, 0);
+    const POS_CENTER = new THREE.Vector3(0, 0, 0);
+    const POS_THIRD = new THREE.Vector3(1.12, 0.18, 0);
+    const POS_TOURB = new THREE.Vector3(0, -1.32, 0);
+    const POS_PR = new THREE.Vector3(-1.35, -0.35, 0);
+
+    // --- LAYER 0: SAPPHIRE CRYSTAL & REHAUT ---
+    const crystalGeo = new THREE.CylinderGeometry(3.12, 3.18, 0.11, 64);
+    crystalGeo.rotateX(Math.PI / 2);
+    const frontCrystalMesh = new THREE.Mesh(crystalGeo, materials.sapphireMat);
+    registerPart(frontCrystalMesh, {
+      name: 'Выпуклое сапфировое стекло',
+      material: 'Синтетический корунд (Al₂O₃), твёрдость 9 по Моосу, двусторонний антиблик',
+      func: 'Защищает циферблат и каретку турбийона от пыли и перепадов давления до 5 атм.',
+      fact: 'Коэффициент преломления сапфира равен 1.77. Голубоватый отлив создаётся интерференционным напылением фторида магния толщиной 120 нм.'
+    });
+    layers.crystal.add(frontCrystalMesh);
+
+    const rehautGeo = new THREE.RingGeometry(2.96, 3.16, 64);
+    const rehautMesh = new THREE.Mesh(rehautGeo, materials.caseMat);
+    registerPart(rehautMesh, {
+      name: 'Рехаут (внутреннее кольцо)',
+      material: 'Нержавеющая сталь 904L с круговым сатинированием',
+      func: 'Несёт минутную и секундную разметку, направляя взгляд к механизму.',
+      fact: 'Наклонный профиль рехаута визуально увеличивает глубину калибра при взгляде под углом.'
+    });
+    layers.crystal.add(rehautMesh);
+
+    // --- LAYER 1: HANDS (HOUR, MINUTE, POWER RESERVE) ---
+    function createLancetHand(length, tail, width, colorMat) {
+      const shape = new THREE.Shape();
+      shape.moveTo(0, -tail);
+      shape.lineTo(width * 0.65, 0);
+      shape.lineTo(width, length * 0.28);
+      shape.lineTo(0, length);
+      shape.lineTo(-width, length * 0.28);
+      shape.lineTo(-width * 0.65, 0);
+      shape.closePath();
+      const geom = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.025,
+        bevelEnabled: true,
+        bevelThickness: 0.012,
+        bevelSize: 0.01,
+        bevelSegments: 2
+      });
+      const group = new THREE.Group();
+      const blade = new THREE.Mesh(geom, colorMat);
+      const collet = new THREE.Mesh(new THREE.CylinderGeometry(width * 1.4, width * 1.4, 0.06, 24), colorMat);
+      collet.rotation.x = Math.PI / 2;
+      group.add(blade, collet);
+      return group;
+    }
+
+    const hourHandGroup = createLancetHand(1.78, 0.28, 0.11, materials.roseGoldMat);
+    hourHandGroup.position.set(0, 0, -0.04);
+    registerPart(hourHandGroup, {
+      name: 'Часовая стрелка Dauphine',
+      material: 'Розовое золото 18 карат (750 проба), алмазная грань',
+      func: 'Совершает полный оборот за 12 часов от часового колеса (Z=48).',
+      fact: 'Две скошенные грани стрелки полируются алмазным резцом под углом 15 градусов, чтобы одна грань всегда ловила свет.'
+    });
+    layers.hands.add(hourHandGroup);
+
+    const minuteHandGroup = createLancetHand(2.58, 0.36, 0.085, materials.roseGoldMat);
+    minuteHandGroup.position.set(0, 0, 0.02);
+    registerPart(minuteHandGroup, {
+      name: 'Минутная стрелка Dauphine',
+      material: 'Розовое золото 18 карат, ручная балансировка противовеса',
+      func: 'Совершает 1 оборот в час, жестко связана с минутным трибом через фрикцион.',
+      fact: 'Противовес в хвостовике стрелки уравновешивает момент тяжести, чтобы стрелка не нагружала минутный триб в вертикальном положении.'
+    });
+    layers.hands.add(minuteHandGroup);
+
+    const prHandGroup = createLancetHand(0.58, 0.14, 0.045, materials.bluedSteelMat);
+    prHandGroup.position.set(POS_PR.x, POS_PR.y, 0.01);
+    registerPart(prHandGroup, {
+      name: 'Стрелка индикатора запаса хода',
+      material: 'Термически воронёная углеродистая сталь',
+      func: 'Отображает остаток энергии заводного барабана от 0 до 52 часов.',
+      fact: 'Воронение выполняется при температуре ровно 295 °C, когда оксидная плёнка приобретает васильковый оттенок.'
+    });
+    layers.hands.add(prHandGroup);
+
+    // --- LAYER 2: DIAL WITH TOURBILLON APERTURE & 12 APPLIED INDICES ---
+    const dialShape = new THREE.Shape();
+    dialShape.absarc(0, 0, 3.02, 0, Math.PI * 2, false);
+    // Open window for Tourbillon at 6 o'clock
+    const tourbHole = new THREE.Path();
+    tourbHole.absarc(POS_TOURB.x, POS_TOURB.y, 0.92, 0, Math.PI * 2, true);
+    dialShape.holes.push(tourbHole);
+    // Open window for Barrel / Power Reserve at 9-10 o'clock
+    const barrelHole = new THREE.Path();
+    barrelHole.absarc(POS_BARREL.x, POS_BARREL.y, 0.62, 0, Math.PI * 2, true);
+    dialShape.holes.push(barrelHole);
+
+    const dialGeo = new THREE.ExtrudeGeometry(dialShape, {
+      depth: 0.05,
+      bevelEnabled: true,
+      bevelThickness: 0.008,
+      bevelSize: 0.008,
+      curveSegments: 64
+    });
+    // Map normalized UVs for 2D dial canvas texture
+    const uvAttr = dialGeo.attributes.uv;
+    const posAttr = dialGeo.attributes.position;
+    for (let i = 0; i < posAttr.count; i++) {
+      const vx = posAttr.getX(i);
+      const vy = posAttr.getY(i);
+      uvAttr.setXY(i, (vx / 6.04) + 0.5, (vy / 6.04) + 0.5);
+    }
+    uvAttr.needsUpdate = true;
+
+    const dialMesh = new THREE.Mesh(dialGeo, materials.dialMat);
+    registerPart(dialMesh, {
+      name: 'Циферблат с апертурой турбийона',
+      material: 'Авантюриновое стекло / эмаль Grand Feu, золотые рамки апертур',
+      func: 'Служит фоном индикации времени и открывает обзор на турбийон и барабан.',
+      fact: 'Авантюриновое стекло изобретено стеклодувами Мурано в XVII веке путём добавления кристаллов меди в расплав.'
+    });
+    layers.dial.add(dialMesh);
+
+    // Tourbillon Aperture Bezel Frame
+    const apFrameGeo = new THREE.RingGeometry(0.90, 0.98, 48);
+    const apFrameMesh = new THREE.Mesh(apFrameGeo, materials.roseGoldMat);
+    apFrameMesh.position.set(POS_TOURB.x, POS_TOURB.y, 0.062);
+    registerPart(apFrameMesh, {
+      name: 'Золотая рамка окна турбийона',
+      material: 'Розовое золото 18К с секундной шкалой',
+      func: 'Обрамляет каретку турбийона и служит шкалой для считывания секунд.',
+      fact: 'Внутренняя фаска рамки полируется вручную деревянными палочками из горечавки с алмазной пастой.'
+    });
+    layers.dial.add(apFrameMesh);
+
+    // 12 Applied Gold Hour Markers
+    for (let h = 0; h < 12; h++) {
+      if (h === 6) continue; // 6 o'clock occupied by tourbillon aperture
+      const angle = (h * Math.PI) / 6;
+      const rMarker = 2.55;
+      const idxGeo = new THREE.BoxGeometry(0.08, 0.36, 0.045);
+      const idxMesh = new THREE.Mesh(idxGeo, materials.roseGoldMat);
+      idxMesh.position.set(Math.sin(angle) * rMarker, Math.cos(angle) * rMarker, 0.065);
+      idxMesh.rotation.z = -angle;
+      registerPart(idxMesh, {
+        name: `Накладная часовая метка (${h === 0 ? 12 : h} ч)`,
+        material: 'Розовое золото 18К, алмазная огранка',
+        func: 'Обозначает часовой сектор на периферии циферблата.',
+        fact: 'Каждая метка фиксируется в циферблате двумя микроножками диаметром 0.35 мм.'
+      });
+      layers.dial.add(idxMesh);
+    }
+
+    // --- LAYER 3: BRIDGES (CÔTES DE GENÈVE + ANGLAGE) & WINDING RATCHET ---
+    function createBridgeMesh(points, depth = 0.11) {
+      const shape = new THREE.Shape();
+      shape.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) {
+        shape.lineTo(points[i][0], points[i][1]);
+      }
+      shape.closePath();
+      const geom = new THREE.ExtrudeGeometry(shape, {
+        depth,
+        bevelEnabled: true,
+        bevelThickness: 0.022, // Polished anglage bevel
+        bevelSize: 0.022,
+        bevelSegments: 3
+      });
+      return new THREE.Mesh(geom, materials.bridgeMat);
+    }
+
+    // Barrel Bridge (Мост барабана)
+    const barrelBridge = createBridgeMesh([
+      [-2.6, 0.35], [-2.2, 1.95], [-0.45, 2.55], [0.25, 1.55], [-0.55, 0.25]
+    ]);
+    registerPart(barrelBridge, {
+      name: 'Мост заводного барабана',
+      material: 'Нейзильбер (Maillechort), отделка «женевские волны» и зеркальный англаж',
+      func: 'Удерживает верхнюю цапфу вала барабана, храповое и коронное колёса.',
+      fact: 'Нейзильбер (сплав меди, никеля и цинка) не требует родирования и со временем приобретает тёплый благородный оттенок.'
+    });
+    layers.bridges.add(barrelBridge);
+
+    // Gear Train Bridge (Мост ангренажа)
+    const trainBridge = createBridgeMesh([
+      [0.35, 1.85], [2.15, 1.55], [2.55, -0.35], [0.65, -0.55], [-0.15, 0.25]
+    ]);
+    registerPart(trainBridge, {
+      name: 'Мост колёсной передачи (ангренажа)',
+      material: 'Нейзильбер с волнами Côtes de Genève и золотыми шатонами',
+      func: 'Фиксирует оси центрального и третьего колёс в рубиновых подшипниках.',
+      fact: 'Осевой зазор колёс под мостом выставляется с допуском 0.015 мм для исключения заклинивания при перепадах температур.'
+    });
+    layers.bridges.add(trainBridge);
+
+    // Breguet-style Tourbillon Upper Bridge (Мост турбийона)
+    const tourbBridgeShape = new THREE.Shape();
+    tourbBridgeShape.moveTo(-1.45, -1.24);
+    tourbBridgeShape.lineTo(-0.32, -1.16);
+    tourbBridgeShape.absarc(0, -1.32, 0.32, Math.PI * 0.75, Math.PI * 0.25, true);
+    tourbBridgeShape.lineTo(1.45, -1.24);
+    tourbBridgeShape.lineTo(1.45, -1.40);
+    tourbBridgeShape.lineTo(0.32, -1.48);
+    tourbBridgeShape.absarc(0, -1.32, 0.32, -Math.PI * 0.25, -Math.PI * 0.75, true);
+    tourbBridgeShape.lineTo(-1.45, -1.40);
+    tourbBridgeShape.closePath();
+
+    const tourbBridgeMesh = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(tourbBridgeShape, {
+        depth: 0.08,
+        bevelEnabled: true,
+        bevelThickness: 0.018,
+        bevelSize: 0.018,
+        bevelSegments: 3
+      }),
+      materials.steelPinionMat
+    );
+    tourbBridgeMesh.position.z = 0.04;
+    registerPart(tourbBridgeMesh, {
+      name: 'Верхний мост турбийона с чёрной полировкой',
+      material: 'Закалённая сталь, техника полировки Specular Black Polish (Bloquage)',
+      func: 'Удерживает верхнюю противоударную опору каретки турбийона.',
+      fact: 'На полировку одного стального моста турбийона на цинковой плите у мастера уходит до 14 часов ручного труда.'
+    });
+    layers.bridges.add(tourbBridgeMesh);
+
+    // Ratchet Wheel (Храповое колесо над барабаном, Z=48)
+    const ratchetWheel = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 48,
+        pitchRadius: 0.76,
+        thickness: 0.06,
+        spokes: 0,
+        boreRadius: 0.14
+      }),
+      materials.steelPinionMat
+    );
+    ratchetWheel.position.set(POS_BARREL.x, POS_BARREL.y, 0.16);
+    registerPart(ratchetWheel, {
+      name: 'Храповое колесо барабана (Z=48)',
+      material: 'Закалённая сталь с солнечной шлифовкой (Colimaçonnage)',
+      func: 'Поворачивает вал барабана при заводе и удерживается собачкой от обратного вращения.',
+      fact: 'Зубья храповика взаимодействуют с подпружиненной собачкой, издавая характерный щелчок при каждом шаге завода.'
+    });
+    layers.bridges.add(ratchetWheel);
+
+    // Crown Wheel (Коронное колесо завода, Z=24)
+    const crownWheel = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 24,
+        pitchRadius: 0.42,
+        thickness: 0.06,
+        spokes: 0,
+        boreRadius: 0.12
+      }),
+      materials.steelPinionMat
+    );
+      // Meshes exactly with Ratchet Wheel: distance = 0.76 + 0.42 = 1.18
+    const crownWheelAngle = 0.32;
+    crownWheel.position.set(
+      POS_BARREL.x + Math.cos(crownWheelAngle) * 1.18,
+      POS_BARREL.y + Math.sin(crownWheelAngle) * 1.18,
+      0.16
+    );
+    registerPart(crownWheel, {
+      name: 'Коронное колесо завода (Z=24)',
+      material: 'Воронёная легированная сталь с кольцевой проточкой',
+      func: 'Передаёт вращение от заводного триба к храповому колесу барабана.',
+      fact: 'Крепится левым винтом с тремя шлицами, чтобы резьба не самоотвинчивалась под нагрузкой завода.'
+    });
+    layers.bridges.add(crownWheel);
+
+    // Click (Собачка храповика)
+    const clickMesh = new THREE.Mesh(
+      new THREE.ConeGeometry(0.11, 0.42, 12),
+      materials.bluedSteelMat
+    );
+    clickMesh.rotation.z = Math.PI * 0.35;
+    clickMesh.position.set(POS_BARREL.x - 0.84, POS_BARREL.y + 0.22, 0.16);
+    registerPart(clickMesh, {
+      name: 'Собачка храпового механизма',
+      material: 'Воронёная пружинная сталь',
+      func: 'Блокирует обратный ход храпового колеса и даёт минимальную отдачу для снятия напряжения.',
+      fact: 'Геометрия носика собачки рассчитана так, чтобы при отпускании головки храповик откатывался на 2 градуса, разгружая зубья.'
+    });
+    layers.bridges.add(clickMesh);
+
+    // --- LAYER 4: GEAR TRAIN & MOTION WORKS ---
+    // 1. Center Wheel (Z2 = 80, z2 = 12) at (0,0)
+    const centerWheelGroup = new THREE.Group();
+    const centerWheelMesh = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 80,
+        pitchRadius: 0.98,
+        thickness: 0.065,
+        spokes: 5,
+        hubRadius: 0.20,
+        boreRadius: 0.06
+      }),
+      materials.goldGearMat
+    );
+    const centerPinionMesh = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 12,
+        pitchRadius: 0.18,
+        thickness: 0.24,
+        spokes: 0,
+        boreRadius: 0.05
+      }),
+      materials.steelPinionMat
+    );
+    centerWheelGroup.add(centerWheelMesh, centerPinionMesh);
+    registerPart(centerWheelGroup, {
+      name: 'Центральное (минутное) колесо и триб (Z=80, z=12)',
+      material: 'Колесо из бериллиевой бронзы CuBe2 с позолотой 24К, стальной триб',
+      func: 'Совершает ровно 1 оборот в час и несёт на своей оси минутную стрелку.',
+      fact: 'Передаточное отношение к заводному барабану равно 96:12 = 8, а к третьему трибу 80:10 = 8.'
+    });
+    layers.train.add(centerWheelGroup);
+
+    // 2. Third Wheel (Z3 = 75, z3 = 10) at POS_THIRD
+    const thirdWheelGroup = new THREE.Group();
+    thirdWheelGroup.position.copy(POS_THIRD);
+    const thirdWheelMesh = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 75,
+        pitchRadius: 0.88,
+        thickness: 0.06,
+        spokes: 5,
+        hubRadius: 0.18,
+        boreRadius: 0.05
+      }),
+      materials.goldGearMat
+    );
+    thirdWheelMesh.position.z = 0.04;
+    const thirdPinionMesh = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 10,
+        pitchRadius: 0.16,
+        thickness: 0.22,
+        spokes: 0,
+        boreRadius: 0.04
+      }),
+      materials.steelPinionMat
+    );
+    thirdWheelGroup.add(thirdWheelMesh, thirdPinionMesh);
+    registerPart(thirdWheelGroup, {
+      name: 'Третье (промежуточное) колесо и триб (Z=75, z=10)',
+      material: 'Латунь CuZn37 с гальваническим золочением, полированный триб',
+      func: 'Передаёт вращение от центрального колеса к трибу каретки турбийона со скоростью 8 об/час.',
+      fact: 'Пять скошенных спиц снижают момент инерции колеса на 38% по сравнению со сплошным диском.'
+    });
+    layers.train.add(thirdWheelGroup);
+
+    // 3. Fixed Fourth Wheel (Z4 = 96, stationary ring around Tourbillon axis)
+    const fixedFourthWheel = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 96,
+        pitchRadius: 0.72,
+        thickness: 0.055,
+        spokes: 6,
+        innerRadiusRatio: 0.84,
+        hubRadius: 0.42,
+        boreRadius: 0.34
+      }),
+      materials.roseGoldMat
+    );
+    fixedFourthWheel.position.set(POS_TOURB.x, POS_TOURB.y, -0.06);
+    registerPart(fixedFourthWheel, {
+      name: 'Неподвижное четвёртое колесо турбийона (Z=96)',
+      material: 'Розовое золото 18К, привинчено к главной платине',
+      func: 'Служит солнечным колесом планетарной передачи: триб анкерного колеса (z=6) обкатывается по нему при вращении каретки.',
+      fact: 'Отношение 96:6 = 16 гарантирует, что за 1 оборот каретки в минуту анкерное колесо совершит 16 оборотов (480 ударов).'
+    });
+    layers.train.add(fixedFourthWheel);
+
+    // 4. Motion Works (Стрелочный механизм: минутный триб z=14, вексельное колесо Z=42/z=12, часовое Z=48)
+    const minuteWheelGroup = new THREE.Group();
+    minuteWheelGroup.position.set(0.68, 0.56, 0.14);
+    const mwGear = new THREE.Mesh(
+      createCycloidalGearGeometry({ teeth: 42, pitchRadius: 0.46, thickness: 0.045, spokes: 4, hubRadius: 0.12 }),
+      materials.goldGearMat
+    );
+    const mwPinion = new THREE.Mesh(
+      createCycloidalGearGeometry({ teeth: 12, pitchRadius: 0.15, thickness: 0.12, spokes: 0 }),
+      materials.steelPinionMat
+    );
+    minuteWheelGroup.add(mwGear, mwPinion);
+    registerPart(minuteWheelGroup, {
+      name: 'Вексельное колесо и триб (Z=42, z=12)',
+      material: 'Золочёная латунь и закалённая сталь',
+      func: 'Понижает скорость вращения минутного триба в 12 раз для привода часовой стрелки (42/14 × 48/12 = 12).',
+      fact: 'Позволяет синхронно переводить обе стрелки при вращении заводной головки в режиме коррекции времени.'
+    });
+    layers.train.add(minuteWheelGroup);
+
+    const hourWheelMesh = new THREE.Mesh(
+      createCycloidalGearGeometry({ teeth: 48, pitchRadius: 0.52, thickness: 0.05, spokes: 4, hubRadius: 0.16 }),
+      materials.goldGearMat
+    );
+    hourWheelMesh.position.set(0, 0, 0.16);
+    registerPart(hourWheelMesh, {
+      name: 'Часовое колесо (Z=48)',
+      material: 'Золочёная латунь с центральной трубкой',
+      func: 'Свободно вращается вокруг минутного триба со скоростью 1 оборот за 12 часов.',
+      fact: 'Прижимается к циферблату тонкой волнистой шайбой-пружиной (клинкетом), устраняющей осевой люфт часовой стрелки.'
+    });
+    layers.train.add(hourWheelMesh);
+
+    // 5. Power Reserve Differential Gear (Z=36)
+    const prWheelMesh = new THREE.Mesh(
+      createCycloidalGearGeometry({ teeth: 36, pitchRadius: 0.40, thickness: 0.045, spokes: 3, hubRadius: 0.11 }),
+      materials.goldGearMat
+    );
+    prWheelMesh.position.set(POS_PR.x, POS_PR.y, 0.10);
+    registerPart(prWheelMesh, {
+      name: 'Колесо дифференциала запаса хода (Z=36)',
+      material: 'Позолоченная бериллиевая бронза',
+      func: 'Сравнивает число оборотов завода барабана и число оборотов разряда на центральный триб.',
+      fact: 'Планетарный дифференциал позволяет заводить часы в любой момент без риска поломки упора стрелки запаса хода.'
+    });
+    layers.train.add(prWheelMesh);
+
+    // --- LAYER 5: TOURBILLON CARRIAGE, BALANCE, HAIRSPRING & SWISS LEVER ESCAPEMENT ---
+    const tourbillonCarriage = new THREE.Group();
+    tourbillonCarriage.position.copy(POS_TOURB);
+    layers.tourbillon.add(tourbillonCarriage);
+
+    // Upper & Lower Titanium Cage Rings + 3 Pillars + Blued Seconds Pointer
+    const cageRingGeo = new THREE.RingGeometry(0.68, 0.80, 48);
+    const upperCage = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(new THREE.Shape().absarc(0, 0, 0.80, 0, Math.PI * 2, false), {
+        depth: 0.035,
+        bevelEnabled: true,
+        bevelThickness: 0.008,
+        bevelSize: 0.008
+      }),
+      materials.titaniumCageMat
+    );
+    // Cut out open lyre inside upper cage using ring + 3 radial arms
+    upperCage.geometry = createCycloidalGearGeometry({
+      teeth: 3,
+      pitchRadius: 0.78,
+      thickness: 0.04,
+      spokes: 3,
+      innerRadiusRatio: 0.92,
+      hubRadius: 0.15,
+      boreRadius: 0.06
+    });
+    upperCage.position.z = 0.14;
+
+    const lowerCage = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 10, // Integrated tourbillon pinion leaves on underside
+        pitchRadius: 0.76,
+        thickness: 0.04,
+        spokes: 3,
+        innerRadiusRatio: 0.90,
+        hubRadius: 0.18,
+        boreRadius: 0.06
+      }),
+      materials.titaniumCageMat
+    );
+    lowerCage.position.z = -0.14;
+
+    // 3 Titanium Cage Pillars
+    for (let p = 0; p < 3; p++) {
+      const pa = (p * Math.PI * 2) / 3;
+      const pillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.032, 0.032, 0.28, 16),
+        materials.roseGoldMat
+      );
+      pillar.rotation.x = Math.PI / 2;
+      pillar.position.set(Math.cos(pa) * 0.72, Math.sin(pa) * 0.72, 0);
+      tourbillonCarriage.add(pillar);
+    }
+
+    // Blued Steel Seconds Pointer on Carriage
+    const secPointer = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.28, 12), materials.bluedSteelMat);
+    secPointer.position.set(0, 0.82, 0.16);
+    tourbillonCarriage.add(upperCage, lowerCage, secPointer);
+
+    registerPart(upperCage, {
+      name: 'Лирообразная каретка турбийона (0.42 г)',
+      material: 'Титан Grade 5 (Ti-6Al-4V) с ручной зеркальной полировкой фасок',
+      func: 'Вращает весь узел спуска и баланса со скоростью 1 оборот в минуту и служит секундной стрелкой.',
+      fact: 'Масса всей каретки из 18 деталей составляет всего 0.42 грамма, что сопоставимо с весом лебяжьего пера.'
+    });
+
+    // Balance Wheel with 8 Gold Timing Screws (Колесо баланса)
+    const balanceGroup = new THREE.Group();
+    balanceGroup.position.set(0, 0, 0.04);
+    const balanceRim = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 8,
+        pitchRadius: 0.56,
+        thickness: 0.045,
+        spokes: 2,
+        innerRadiusRatio: 0.92,
+        hubRadius: 0.12,
+        boreRadius: 0.04
+      }),
+      materials.roseGoldMat
+    );
+    balanceGroup.add(balanceRim);
+
+    // 8 Masselottes / Timing Screws on Balance Rim
+    for (let m = 0; m < 8; m++) {
+      const ma = (m * Math.PI * 2) / 8;
+      const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.08, 12), materials.goldGearMat);
+      screw.position.set(Math.cos(ma) * 0.57, Math.sin(ma) * 0.57, 0);
+      screw.rotation.z = ma;
+      balanceGroup.add(screw);
+    }
+    // Impulse Roller Jewel (Импульсный рубиновый эллипс)
+    const impulseJewel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.09, 12), materials.rubyMat);
+    impulseJewel.rotation.x = Math.PI / 2;
+    impulseJewel.position.set(0, -0.11, -0.05);
+    balanceGroup.add(impulseJewel);
+
+    registerPart(balanceGroup, {
+      name: 'Свободно колеблющийся баланс с инерционными грузиками',
+      material: 'Сплав Glucydur (бериллиевая бронза), 8 золотых винтов регулировки инерции',
+      func: 'Совершает изохронные колебания с частотой 4 Гц (28 800 пк/час) и амплитудой 280 градусов.',
+      fact: 'Регулировка точности хода выполняется поворотом парных золотых винтов на ободе без изменения активной длины спирали.'
+    });
+    tourbillonCarriage.add(balanceGroup);
+
+    // Breathing Hairspring (Волосок баланса)
+    const hairspringLine = createHairspringMesh(materials.hairspringMat);
+    hairspringLine.position.set(0, 0, 0.10);
+    tourbillonCarriage.add(hairspringLine);
+
+    // Escape Wheel + Pinion inside Carriage (Z5 = 15, z5 = 6)
+    // Positioned at radial distance 0.72 - 0.12 = 0.60 so its 6-leaf pinion rolls inside/along the Fixed Fourth Wheel!
+    const ESC_OFFSET = new THREE.Vector3(0.42, -0.18, -0.05);
+    const escapeWheelGroup = new THREE.Group();
+    escapeWheelGroup.position.copy(ESC_OFFSET);
+
+    const escapeWheelMesh = new THREE.Mesh(
+      createEscapeWheelGeometry(0.28, 0.038),
+      materials.steelPinionMat
+    );
+    const escapePinionMesh = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 6,
+        pitchRadius: 0.09,
+        thickness: 0.16,
+        spokes: 0,
+        boreRadius: 0.025
+      }),
+      materials.steelPinionMat
+    );
+    escapeWheelGroup.add(escapeWheelMesh, escapePinionMesh);
+    registerPart(escapeWheelGroup, {
+      name: 'Анкерное колесо швейцарского спуска (Z=15, z=6)',
+      material: 'Сплав никель-фосфор (фотолитография LIGA), антимагнитное исполнение',
+      func: 'Продвигается дискретными шагами по 12 градусов при каждом полуколебании баланса.',
+      fact: 'Технология микрогальванопластики LIGA формирует профиль 15 пяточных зубьев с точностью до 1 микрона.'
+    });
+    tourbillonCarriage.add(escapeWheelGroup);
+
+    // Swiss Lever Pallet Fork with 2 Ruby Pallets (Анкерная вилка)
+    const palletForkGroup = new THREE.Group();
+    palletForkGroup.position.set(0.16, -0.08, -0.05);
+
+    const forkBodyGeo = new THREE.BoxGeometry(0.34, 0.045, 0.032);
+    const forkBody = new THREE.Mesh(forkBodyGeo, materials.steelPinionMat);
+    forkBody.position.x = -0.04;
+    // Entry and Exit Ruby Pallets
+    const entryPallet = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, 0.042), materials.rubyMat);
+    entryPallet.position.set(0.12, 0.08, 0);
+    entryPallet.rotation.z = -0.35;
+    const exitPallet = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, 0.042), materials.rubyMat);
+    exitPallet.position.set(0.12, -0.08, 0);
+    exitPallet.rotation.z = 0.35;
+
+    palletForkGroup.add(forkBody, entryPallet, exitPallet);
+    registerPart(palletForkGroup, {
+      name: 'Анкерная вилка с рубиновыми паллетами',
+      material: 'Скелетонизированная сталь, входная и выходная паллеты из синтетического рубина',
+      func: 'Поочерёдно запирает и освобождает зубья анкерного колеса, передавая импульс балансу.',
+      fact: 'Паллеты вклеиваются в пазы вилки натуральным шеллаком при нагреве до 110 °C для точной юстировки глубины хода.'
+    });
+    tourbillonCarriage.add(palletForkGroup);
+
+    // Incabloc Shock Jewel on Upper Cage
+    const incablocJewel = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 24), materials.rubyMat);
+    incablocJewel.rotation.x = Math.PI / 2;
+    incablocJewel.position.set(0, 0, 0.16);
+    tourbillonCarriage.add(incablocJewel);
+
+    // --- LAYER 6: MAINSPRING BARREL & DYNAMIC SPIRAL MAINSPRING ---
+    const barrelGroup = new THREE.Group();
+    barrelGroup.position.copy(POS_BARREL);
+    layers.barrel.add(barrelGroup);
+
+    // Open-worked Barrel Drum (Z1 = 96) so the spiral mainspring inside is visible!
+    const barrelDrumMesh = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 96,
+        pitchRadius: 1.18,
+        thickness: 0.16,
+        spokes: 6,
+        innerRadiusRatio: 0.88,
+        hubRadius: 0.28,
+        boreRadius: 0.16
+      }),
+      materials.goldGearMat
+    );
+    registerPart(barrelDrumMesh, {
+      name: 'Заводной барабан (Z=96)',
+      material: 'Латунный сплав с золотым покрытием и алмазной фрезеровкой зубьев',
+      func: 'Ажурный корпус барабана передаёт крутящий момент пружины на центральный триб (96:12 = 8).',
+      fact: 'Один полный оборот заводного барабана обеспечивает ровно 8 часов работы часового механизма.'
+    });
+    barrelGroup.add(barrelDrumMesh);
+
+    // Dynamic Mainspring inside Barrel
+    const msPoints = 320;
+    const msGeom = new THREE.BufferGeometry();
+    msGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(msPoints * 3), 3));
+    const mainspringLine = new THREE.Line(msGeom, materials.mainspringMat);
+    mainspringLine.position.z = 0.02;
+    barrelGroup.add(mainspringLine);
+
+    const barrelArbor = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24, 0.24, 0.24, 24),
+      materials.steelPinionMat
+    );
+    barrelArbor.rotation.x = Math.PI / 2;
+    registerPart(barrelArbor, {
+      name: 'Вал заводного барабана с улиткой',
+      material: 'Закалённая инструментальная сталь',
+      func: 'Захватывает внутренний виток заводной пружины при вращении храпового колеса.',
+      fact: 'Диаметр вала составляет ровно одну треть внутреннего диаметра барабана для защиты пружины от усталостного излома.'
+    });
+    barrelGroup.add(barrelArbor);
+
+    // --- LAYER 7: MAINPLATE (PERLAGE), WINDING STEM, JEWELS & BLUED SCREWS ---
+    const mpShape = new THREE.Shape();
+    mpShape.absarc(0, 0, 3.04, 0, Math.PI * 2, false);
+    const mpTourbHole = new THREE.Path();
+    mpTourbHole.absarc(POS_TOURB.x, POS_TOURB.y, 0.86, 0, Math.PI * 2, true);
+    mpShape.holes.push(mpTourbHole);
+
+    const mainplateMesh = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(mpShape, {
+        depth: 0.14,
+        bevelEnabled: true,
+        bevelThickness: 0.015,
+        bevelSize: 0.015,
+        curveSegments: 64
+      }),
+      materials.mainplateMat
+    );
+    mainplateMesh.position.z = -0.08;
+    registerPart(mainplateMesh, {
+      name: 'Главная платина с круговым зернением (Перляж)',
+      material: 'Нейзильбер с родиевым покрытием и ручным перляжем',
+      func: 'Базовое шасси калибра, объединяющее все мосты, камни и заводной узел.',
+      fact: 'Каждое зерно перляжа наносится вращающимся абразивным штифтом вручную с перекрытием в 50% диаметра.'
+    });
+    layers.mainplate.add(mainplateMesh);
+
+    // Winding Stem & Sliding Pinion at 3 o'clock
+    const windingStemGroup = new THREE.Group();
+    const stemMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.65, 20), materials.steelPinionMat);
+    stemMesh.rotation.z = Math.PI / 2;
+    stemMesh.position.set(2.35, 0, 0.05);
+    const windingPinion = new THREE.Mesh(
+      createCycloidalGearGeometry({ teeth: 14, pitchRadius: 0.22, thickness: 0.18, spokes: 0 }),
+      materials.steelPinionMat
+    );
+    windingPinion.rotation.y = Math.PI / 2;
+    windingPinion.position.set(1.95, 0, 0.05);
+    windingStemGroup.add(stemMesh, windingPinion);
+    registerPart(windingStemGroup, {
+      name: 'Заводной вал и кулачковая муфта (Ремонтуар)',
+      material: 'Высокоуглеродистая сталь с закалкой зубьев Бреге',
+      func: 'Передаёт вращение от заводной головки на коронное колесо или стрелочный механизм.',
+      fact: 'Косые торцевые зубья кулачковой муфты работают как храповик при вращении головки вперёд и проскальзывают назад.'
+    });
+    layers.mainplate.add(windingStemGroup);
+
+    // 18 Blued Steel Screws & 14 Ruby Jewels in Gold Chatons across Mainplate and Bridges
+    const screwGeo = new THREE.CylinderGeometry(0.085, 0.085, 0.06, 20);
+    screwGeo.rotateX(Math.PI / 2);
+    const slotGeo = new THREE.BoxGeometry(0.15, 0.022, 0.025);
+
+    const screwPositions = [
+      [-2.1, 1.6], [-0.7, 2.2], [-1.8, 0.5], [0.6, 1.6], [1.9, 1.3],
+      [2.2, -0.2], [0.9, -0.4], [-1.25, -1.32], [1.25, -1.32],
+      [-2.4, -0.6], [-1.7, -1.9], [1.7, -1.9], [2.4, -0.8], [0.0, 2.55],
+      [-0.4, -2.5], [0.4, -2.5], [-2.55, 0.1], [2.55, 0.6]
+    ];
+
+    screwPositions.forEach((sp, idx) => {
+      const sGroup = new THREE.Group();
+      const sHead = new THREE.Mesh(screwGeo, materials.bluedSteelMat);
+      const sSlot = new THREE.Mesh(slotGeo, materials.mainplateMat);
+      sSlot.position.z = 0.025;
+      sGroup.add(sHead, sSlot);
+      sGroup.position.set(sp[0], sp[1], idx < 9 ? 0.14 : 0.08);
+      sGroup.rotation.z = idx * 0.7;
+      registerPart(sGroup, {
+        name: `Воронёный крепёжный винт №${idx + 1}`,
+        material: 'Углеродистая сталь, термическое воронение при 295 °C',
+        func: 'Фиксирует мосты и золотые шатоны к главной платине без люфтов.',
+        fact: 'Шлиц и фаска каждого винта полируются вручную до состояния тёмного зеркала перед нагревом.'
+      });
+      (idx < 9 ? layers.bridges : layers.mainplate).add(sGroup);
+    });
+
+    const chatonGeo = new THREE.RingGeometry(0.11, 0.17, 24);
+    const jewelGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.05, 24);
+    jewelGeo.rotateX(Math.PI / 2);
+    const jewelCoords = [
+      [0, 0], [1.12, 0.18], [-1.05, 1.05], [-1.35, -0.35],
+      [0.68, 0.56], [-0.65, 1.45], [1.55, 0.85], [1.65, -0.95],
+      [-1.55, -0.95], [0, 1.95], [-1.95, 1.15], [1.95, 0.45]
+    ];
+
+    jewelCoords.forEach((jc, idx) => {
+      const jGroup = new THREE.Group();
+      const ruby = new THREE.Mesh(jewelGeo, materials.rubyMat);
+      const chaton = new THREE.Mesh(chatonGeo, materials.roseGoldMat);
+      chaton.position.z = 0.028;
+      jGroup.add(ruby, chaton);
+      jGroup.position.set(jc[0], jc[1], idx < 5 ? 0.13 : 0.07);
+      registerPart(jGroup, {
+        name: `Рубиновый камень в золотом шатоне №${idx + 1}`,
+        material: 'Синтетический корунд (рубин) в оправе из розового золота 18К',
+        func: 'Снижает трение стальных цапф колёсной передачи и удерживает часовое масло в мениске.',
+        fact: 'Пара трения «закалённая сталь по синтетическому рубину» имеет коэффициент трения всего 0.10.'
+      });
+      (idx < 5 ? layers.bridges : layers.mainplate).add(jGroup);
+    });
+
+    // --- LAYER 8: WATCH CASE, BEZEL, LUGS, FLUTED CROWN & EXHIBITION CASEBACK ---
+    const caseShape = new THREE.Shape();
+    caseShape.absarc(0, 0, 3.48, 0, Math.PI * 2, false);
+    const caseHole = new THREE.Path();
+    caseHole.absarc(0, 0, 3.04, 0, Math.PI * 2, true);
+    caseShape.holes.push(caseHole);
+
+    const caseBodyMesh = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(caseShape, {
+        depth: 0.72,
+        bevelEnabled: true,
+        bevelThickness: 0.08,
+        bevelSize: 0.06,
+        bevelSegments: 4,
+        curveSegments: 64
+      }),
+      materials.caseMat
+    );
+    caseBodyMesh.position.z = -0.26;
+
+    // 4 Sculpted Horological Lugs (Ушки корпуса)
+    const lugAngles = [0.46, Math.PI - 0.46, Math.PI + 0.46, -0.46];
+    lugAngles.forEach((la) => {
+      const lugGeo = new THREE.BoxGeometry(0.42, 0.95, 0.48);
+      const lugMesh = new THREE.Mesh(lugGeo, materials.caseMat);
+      lugMesh.position.set(Math.sin(la) * 3.65, Math.cos(la) * 3.65, 0.06);
+      lugMesh.rotation.z = -la * 0.35;
+      caseBodyMesh.add(lugMesh);
+    });
+
+    registerPart(caseBodyMesh, {
+      name: 'Корпус часов со скульптурными ушками',
+      material: 'Сталь 904L / Розовое золото 18К / Титан Grade 5 / Циркониевая керамика',
+      func: 'Защищает мануфактурный калибр от ударов, магнитных полей и влаги.',
+      fact: 'Корпус сочетает зеркально полированный безель с продольным сатинированием боковых граней.'
+    });
+    layers.caseback.add(caseBodyMesh);
+
+    // Fluted Winding Crown at 3 o'clock (Заводная головка)
+    const crownGroup = new THREE.Group();
+    crownGroup.position.set(3.75, 0, 0.08);
+    const crownCore = new THREE.Mesh(
+      createCycloidalGearGeometry({
+        teeth: 28,
+        pitchRadius: 0.42,
+        thickness: 0.36,
+        spokes: 0,
+        boreRadius: 0.0
+      }),
+      materials.caseMat
+    );
+    crownCore.rotation.y = Math.PI / 2;
+    crownGroup.add(crownCore);
+    registerPart(crownGroup, {
+      name: 'Рифлёная заводная головка',
+      material: 'Металл корпуса с 28 продольными шлицами и двойным уплотнением',
+      func: 'Позволяет вручную заводить барабан и корректировать показания стрелок.',
+      fact: 'Потяните или кликните по головке, чтобы взвести боевую пружину и услышать работу храповика.'
+    });
+    layers.caseback.add(crownGroup);
+
+    // Exhibition Sapphire Caseback
+    const backCrystalMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.02, 3.02, 0.06, 64).rotateX(Math.PI / 2),
+      materials.sapphireMat
+    );
+    backCrystalMesh.position.z = -0.32;
+    layers.caseback.add(backCrystalMesh);
+
+    /* ==========================================================================
+       6. POST-PROCESSING PIPELINE (BLOOM + BOKEH DOF + AGX/LOUPE SHADER)
+       ========================================================================== */
+    const composer = new EffectComposer(renderer);
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.34, // strength
+      0.55, // radius
+      0.84  // threshold (only specular highlights & shader edges bloom)
+    );
+    composer.addPass(bloomPass);
+
+    const bokehPass = new BokehPass(scene, camera, {
+      focus: 8.8,
+      aperture: 0.00012,
+      maxblur: 0.006
+    });
+    composer.addPass(bokehPass);
+
+    // Final Cinematic Vignette, Grain & Jeweler's Loupe Pass
+    const FinalHorologyShader = {
+      uniforms: {
+        tDiffuse: { value: null },
+        uTime: { value: 0 },
+        uLoupeActive: { value: 0.0 },
+        uMouseUV: { value: new THREE.Vector2(0.5, 0.5) },
+        uAspect: { value: window.innerWidth / window.innerHeight }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float uTime;
+        uniform float uLoupeActive;
+        uniform vec2 uMouseUV;
+        uniform float uAspect;
+        varying vec2 vUv;
+
+        float rand(vec2 co) {
+          return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+        }
+
+        void main() {
+          vec2 uv = vUv;
+          vec2 delta = uv - uMouseUV;
+          delta.x *= uAspect;
+          float distMouse = length(delta);
+
+          // Jeweler's Loupe optical magnification & brass ring when uLoupeActive > 0
+          if (uLoupeActive > 0.01) {
+            float loupeRadius = 0.25;
+            if (distMouse < loupeRadius) {
+              float lensFactor = mix(1.0, 0.52, uLoupeActive * (1.0 - pow(distMouse / loupeRadius, 2.0) * 0.25));
+              uv = uMouseUV + (vUv - uMouseUV) * lensFactor;
+            }
+          }
+
+          vec4 col = texture2D(tDiffuse, uv);
+
+          // Studio Vignette
+          vec2 centerDist = vUv - 0.5;
+          float vig = 1.0 - dot(centerDist, centerDist) * 0.58;
+          col.rgb *= clamp(vig, 0.3, 1.0);
+
+          // Loupe Ring Overlay
+          if (uLoupeActive > 0.01) {
+            float loupeRadius = 0.25;
+            float ring = smoothstep(0.008, 0.0, abs(distMouse - loupeRadius));
+            float outerDim = smoothstep(loupeRadius, loupeRadius + 0.06, distMouse);
+            col.rgb *= mix(1.0, 0.38, outerDim * uLoupeActive);
+            col.rgb = mix(col.rgb, vec3(0.85, 0.68, 0.42), ring * uLoupeActive);
+          }
+
+          // Subtle film grain
+          float grain = (rand(vUv + fract(uTime * 0.13)) - 0.5) * 0.018;
+          col.rgb += grain;
+
+          gl_FragColor = col;
+        }
+      `
+    };
+    const finalPass = new ShaderPass(FinalHorologyShader);
+    composer.addPass(finalPass);
+
+    /* ==========================================================================
+       7. SCROLL STORY CAMERA SPLINE & STATE ORCHESTRATION (800VH)
+       ========================================================================== */
+    const state = {
+      scrollProgress: 0,
+      activeStage: 1,
+      speedMultiplier: 1.0,
+      timeOffsetMinutes: 0,
+      powerReserveHours: 42.0,
+      maxReserveHours: 52.0,
+      xrayMode: false,
+      loupeMode: false,
+      reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      userRotX: 0.18,
+      userRotY: -0.22,
+      targetRotX: 0.18,
+      targetRotY: -0.22,
+      isDragging: false,
+      lastAssemblyTickStage: 0
+    };
+
+    // Smooth camera spline waypoints across the 8 scroll chapters (never intersects geometry)
+    const camWaypoints = [
+      new THREE.Vector3(0.0, -4.6, 8.2),   // Stage 1: Hero angled studio shot
+      new THREE.Vector3(0.0, -1.6, 4.9),   // Stage 2: Gliding through sapphire crystal
+      new THREE.Vector3(5.6, -4.4, 5.2),   // Stage 3: Isometric exploded view
+      new THREE.Vector3(-1.3, 0.8, 3.8),   // Stage 4: Energy focus on Barrel & Train
+      new THREE.Vector3(0.28, -1.45, 2.05),// Stage 5: Macro Escapement (20x slow-mo)
+      new THREE.Vector3(-1.1, -2.5, 2.75), // Stage 6: Orbiting Tourbillon Carriage
+      new THREE.Vector3(3.4, -3.6, 6.2),   // Stage 7: Elastic Assembly
+      new THREE.Vector3(0.0, -3.2, 7.6)    // Stage 8: Configurator studio view
+    ];
+
+    const lookWaypoints = [
+      new THREE.Vector3(0.0, 0.0, 0.0),    // Stage 1
+      new THREE.Vector3(0.0, -0.2, 0.1),   // Stage 2
+      new THREE.Vector3(0.0, 0.0, 0.2),    // Stage 3
+      new THREE.Vector3(-0.35, 0.45, 0.0), // Stage 4
+      new THREE.Vector3(0.22, -1.38, -0.04),// Stage 5 (Escapement & Balance)
+      new THREE.Vector3(0.0, -1.32, 0.0),  // Stage 6 (Tourbillon center)
+      new THREE.Vector3(0.0, 0.0, 0.0),    // Stage 7
+      new THREE.Vector3(0.0, 0.0, 0.0)     // Stage 8
+    ];
+
+    const camCurve = new THREE.CatmullRomCurve3(camWaypoints, false, 'catmullrom', 0.35);
+    const lookCurve = new THREE.CatmullRomCurve3(lookWaypoints, false, 'catmullrom', 0.35);
+
+    const progressBar = document.getElementById('scroll-progress-bar');
+    const calloutSvg = document.getElementById('callout-svg');
+    const calloutLabels = document.getElementById('callout-labels');
+    const energyBadges = document.getElementById('energy-badges');
+
+    ScrollTrigger.create({
+      trigger: '#scroll-container',
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 0.6,
+      onUpdate: (self) => {
+        state.scrollProgress = self.progress;
+        progressBar.style.height = `${(self.progress * 100).toFixed(1)}%`;
+
+        const stageFloat = self.progress * 7; // 0 .. 7 (corresponding to Stages 1..8)
+        const currentStage = Math.min(8, Math.floor(stageFloat) + 1);
+
+        if (currentStage !== state.activeStage) {
+          state.activeStage = currentStage;
+          // Play assembly clicks when passing through Stage 7
+          if (currentStage === 7) {
+            audio.playAssemblySnap(1.0);
+          }
+        }
+
+        // Toggle Stage 3 Exploded View SVG Callouts
+        const isExploded = stageFloat > 1.55 && stageFloat < 2.55;
+        calloutSvg.classList.toggle('visible', isExploded);
+        calloutLabels.classList.toggle('visible', isExploded);
+
+        // Toggle Stage 4 Energy Ratio Badges
+        const isEnergy = stageFloat > 2.55 && stageFloat < 3.55;
+        energyBadges.classList.toggle('visible', isEnergy);
+      }
+    });
+
+    /* ==========================================================================
+       8. STAGE 3 SVG CALLOUTS & STAGE 4 ENERGY RATIO BADGES
+       ========================================================================== */
+    const calloutDefinitions = [
+      { mesh: frontCrystalMesh, title: 'Сапфировое стекло', sub: 'Корунд Al₂O₃ • IOR 1.77', side: 'left' },
+      { mesh: minuteHandGroup, title: 'Стрелки Dauphine', sub: 'Розовое золото 18К', side: 'right' },
+      { mesh: dialMesh, title: 'Циферблат с апертурой', sub: 'Авантюрин / Эмаль Grand Feu', side: 'left' },
+      { mesh: trainBridge, title: 'Мост ангренажа', sub: 'Женевские волны • Англаж', side: 'right' },
+      { mesh: centerWheelGroup, title: 'Центральное колесо', sub: 'Z=80, z=12 • 1 об/час', side: 'right' },
+      { mesh: upperCage, title: 'Каретка турбийона', sub: 'Титан Grade 5 • 1 об/мин', side: 'left' },
+      { mesh: barrelDrumMesh, title: 'Заводной барабан', sub: 'Z=96 • Запас хода 52 ч', side: 'left' },
+      { mesh: mainplateMesh, title: 'Главная платина', sub: 'Нейзильбер • Перляж', side: 'right' },
+      { mesh: caseBodyMesh, title: 'Корпус и крышка', sub: 'Сталь 904L / Сапфир', side: 'left' }
+    ];
+
+    calloutDefinitions.forEach((def) => {
+      const el = document.createElement('div');
+      el.className = 'callout-item';
+      el.tabIndex = 0;
+      el.innerHTML = `<span class="c-name">${def.title}</span><span class="c-sub">${def.sub}</span>`;
+      el.addEventListener('click', () => openPartCard(def.mesh.userData.partInfo));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openPartCard(def.mesh.userData.partInfo);
+        }
+      });
+      calloutLabels.appendChild(el);
+      def.el = el;
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      line.setAttribute('fill', 'none');
+      line.setAttribute('stroke', 'rgba(212, 175, 112, 0.65)');
+      line.setAttribute('stroke-width', '1.2');
+      calloutSvg.appendChild(line);
+      def.line = line;
+
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('r', '3.5');
+      dot.setAttribute('fill', '#f3d49c');
+      calloutSvg.appendChild(dot);
+      def.dot = dot;
+    });
+
+    const ratioDefinitions = [
+      { pos: POS_BARREL, text: 'Барабан Z₁=96 → Триб z₂=12 (8.0×)' },
+      { pos: POS_CENTER, text: 'Центр Z₂=80 → Триб z₃=10 (8.0×)' },
+      { pos: POS_THIRD, text: 'Третье Z₃=75 → Каретка z₄=10 (7.5×)' },
+      { pos: POS_TOURB, text: 'Колесо Z₄=96 → Спуск z₅=6 (16.0×)' }
+    ];
+    ratioDefinitions.forEach(rd => {
+      const b = document.createElement('div');
+      b.className = 'ratio-badge';
+      b.textContent = rd.text;
+      energyBadges.appendChild(b);
+      rd.el = b;
+    });
+
+    const tempProjVec = new THREE.Vector3();
+    function updateDOMOverlays() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // Update Stage 3 SVG Callouts with Y-collision avoidance
+      if (calloutSvg.classList.contains('visible')) {
+        const leftItems = [];
+        const rightItems = [];
+
+        calloutDefinitions.forEach(def => {
+          def.mesh.getWorldPosition(tempProjVec);
+          tempProjVec.project(camera);
+          const sx = (tempProjVec.x * 0.5 + 0.5) * w;
+          const sy = (-(tempProjVec.y * 0.5) + 0.5) * h;
+          def.sx = sx;
+          def.sy = sy;
+          def.labelY = Math.max(95, Math.min(h - 95, sy));
+          if (def.side === 'left') leftItems.push(def);
+          else rightItems.push(def);
+        });
+
+        // Sort & push apart vertically to guarantee zero overlap
+        const resolveOverlap = (arr) => {
+          arr.sort((a, b) => a.labelY - b.labelY);
+          const minGap = 54;
+          for (let i = 1; i < arr.length; i++) {
+            if (arr[i].labelY - arr[i - 1].labelY < minGap) {
+              arr[i].labelY = arr[i - 1].labelY + minGap;
+            }
+          }
+        };
+        resolveOverlap(leftItems);
+        resolveOverlap(rightItems);
+
+        calloutDefinitions.forEach(def => {
+          const isLeft = def.side === 'left';
+          const lx = isLeft ? Math.max(24, w * 0.14) : Math.min(w - 250, w * 0.74);
+          const anchorX = isLeft ? lx + 215 : lx;
+          const kneeX = isLeft ? anchorX + 28 : anchorX - 28;
+
+          def.el.style.left = `${lx}px`;
+          def.el.style.top = `${def.labelY}px`;
+          def.dot.setAttribute('cx', def.sx.toFixed(1));
+          def.dot.setAttribute('cy', def.sy.toFixed(1));
+          def.line.setAttribute(
+            'points',
+            `${def.sx.toFixed(1)},${def.sy.toFixed(1)} ${kneeX.toFixed(1)},${def.labelY.toFixed(1)} ${anchorX.toFixed(1)},${def.labelY.toFixed(1)}`
+          );
+        });
+      }
+
+      // Update Stage 4 Energy Ratio Badges
+      if (energyBadges.classList.contains('visible')) {
+        ratioDefinitions.forEach((rd, idx) => {
+          tempProjVec.copy(rd.pos);
+          tempProjVec.applyMatrix4(watchRoot.matrixWorld);
+          tempProjVec.project(camera);
+          const bx = (tempProjVec.x * 0.5 + 0.5) * w;
+          const by = (-(tempProjVec.y * 0.5) + 0.5) * h - 28 + (idx % 2) * 52;
+          rd.el.style.left = `${bx}px`;
+          rd.el.style.top = `${by}px`;
+        });
+      }
+    }
+
+    /* ==========================================================================
+       9. INTERACTIVITY: DRAG ROTATION, RAYCAST HOVER/CLICK, CROWN WIND, LOUPE
+       ========================================================================== */
+    const raycaster = new THREE.Raycaster();
+    const pointerNDC = new THREE.Vector2();
+    const hoverTooltip = document.getElementById('hover-tooltip');
+    const partCard = document.getElementById('part-card');
+    const loupeBadge = document.getElementById('loupe-badge');
+    let hoveredMesh = null;
+    let pointerDownPos = { x: 0, y: 0 };
+    let prevPointerPos = { x: 0, y: 0 };
+    let longPressTimer = null;
+
+    function openPartCard(info) {
+      if (!info) return;
+      document.getElementById('pc-title').textContent = info.name;
+      document.getElementById('pc-material').textContent = info.material;
+      document.getElementById('pc-function').textContent = info.func;
+      document.getElementById('pc-fact').textContent = info.fact;
+      partCard.classList.add('open');
+    }
+
+    document.getElementById('pc-close').addEventListener('click', () => {
+      partCard.classList.remove('open');
+    });
+
+    function windWatchBarrel(hoursDelta = 6.0) {
+      state.powerReserveHours = Math.min(state.maxReserveHours, state.powerReserveHours + hoursDelta);
+      audio.playRatchetClick();
+      // Animate crown & ratchet recoil
+      gsap.fromTo(crownGroup.rotation, { x: 0 }, { x: Math.PI * 1.5, duration: 0.45, ease: 'back.out(1.6)' });
+      gsap.fromTo(clickMesh.rotation, { z: Math.PI * 0.25 }, { z: Math.PI * 0.35, duration: 0.3, ease: 'elastic.out(1.2, 0.4)' });
+    }
+
+    document.getElementById('btn-wind').addEventListener('click', () => windWatchBarrel(8.0));
+
+    // Time Offset Slider (±12 hours)
+    const timeSlider = document.getElementById('slider-time');
+    timeSlider.addEventListener('input', (e) => {
+      state.timeOffsetMinutes = parseFloat(e.target.value);
+    });
+    document.getElementById('btn-reset-time').addEventListener('click', () => {
+      state.timeOffsetMinutes = 0;
+      timeSlider.value = 0;
+    });
+
+    // Speed Multiplier Selector (1x, 1/10, 1/100)
+    document.querySelectorAll('[data-speed]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-speed]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.speedMultiplier = parseFloat(btn.dataset.speed);
+      });
+    });
+
+    // X-Ray Mode Toggle
+    const btnXray = document.getElementById('btn-xray');
+    btnXray.addEventListener('click', () => {
+      state.xrayMode = !state.xrayMode;
+      btnXray.classList.toggle('active', state.xrayMode);
+      const xrayMats = [materials.bridgeMat, materials.mainplateMat, materials.caseMat, materials.dialMat];
+      xrayMats.forEach(mat => {
+        mat.transparent = true;
+        mat.depthWrite = !state.xrayMode;
+        gsap.to(mat, { opacity: state.xrayMode ? 0.22 : 1.0, duration: 0.45 });
+      });
+    });
+
+    // Loupe Mode Toggle (Button or Shift Key or Long-Press)
+    const btnLoupe = document.getElementById('btn-loupe');
+    function setLoupeActive(active) {
+      state.loupeMode = active;
+      btnLoupe.classList.toggle('active', active);
+      loupeBadge.classList.toggle('active', active);
+      gsap.to(finalPass.uniforms.uLoupeActive, { value: active ? 1.0 : 0.0, duration: 0.35 });
+    }
+    btnLoupe.addEventListener('click', () => setLoupeActive(!state.loupeMode));
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Shift' && !state.loupeMode) setLoupeActive(true);
+      if (e.key === 'Escape') partCard.classList.remove('open');
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'Shift' && state.loupeMode && !btnLoupe.dataset.locked) setLoupeActive(false);
+    });
+
+    // Audio Synthesizer Toggle
+    const btnAudio = document.getElementById('btn-audio');
+    btnAudio.addEventListener('click', () => {
+      const on = audio.toggle();
+      btnAudio.textContent = on ? 'Звук: Вкл' : 'Звук: Выкл';
+      btnAudio.classList.toggle('active', on);
+    });
+
+    // Configurator Wave Transitions (Case & Dial)
+    const casePalettes = {
+      steel: { color: 0xd8dde4, roughness: 0.12, metalness: 0.96 },
+      gold: { color: 0xe5a687, roughness: 0.13, metalness: 0.96 },
+      titanium: { color: 0x8e959e, roughness: 0.22, metalness: 0.90 },
+      ceramic: { color: 0x16181d, roughness: 0.08, metalness: 0.45 }
+    };
+
+    document.querySelectorAll('[data-case]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-case]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const preset = casePalettes[btn.dataset.case];
+        shaderUniforms.uPrevCaseColor.value.copy(shaderUniforms.uTargetCaseColor.value);
+        shaderUniforms.uTargetCaseColor.value.setHex(preset.color);
+        shaderUniforms.uWaveOrigin.value.set(3.2, 1.5, 0.5);
+        materials.caseMat.roughness = preset.roughness;
+        materials.caseMat.metalness = preset.metalness;
+        gsap.fromTo(shaderUniforms.uWaveProgress, { value: 0.0 }, { value: 1.35, duration: 1.1, ease: 'power2.out' });
+        audio.playAssemblySnap(1.2);
+      });
+    });
+
+    document.querySelectorAll('[data-dial]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-dial]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const dialType = btn.dataset.dial;
+        if (dialType === 'skeleton') {
+          gsap.to(shaderUniforms.uDialDissolve, { value: 0.82, duration: 0.85, ease: 'power2.inOut' });
+        } else {
+          materials.dialMat.map = dialType === 'enamel' ? enamelTex : aventurineTex;
+          materials.dialMat.needsUpdate = true;
+          gsap.to(shaderUniforms.uDialDissolve, { value: 0.0, duration: 0.85, ease: 'power2.inOut' });
+        }
+        audio.playAssemblySnap(0.95);
+      });
+    });
+
+    // Pointer Events on 3D Canvas
+    canvas.addEventListener('pointerdown', (e) => {
+      state.isDragging = true;
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+      prevPointerPos = { x: e.clientX, y: e.clientY };
+
+      // Long press on touch triggers Loupe mode
+      if (e.pointerType === 'touch') {
+        longPressTimer = setTimeout(() => setLoupeActive(true), 500);
+      }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      const nx = (e.clientX / window.innerWidth) * 2 - 1;
+      const ny = -(e.clientY / window.innerHeight) * 2 + 1;
+      pointerNDC.set(nx, ny);
+      finalPass.uniforms.uMouseUV.value.set(e.clientX / window.innerWidth, 1.0 - e.clientY / window.innerHeight);
+
+      if (state.isDragging) {
+        clearTimeout(longPressTimer);
+        const dx = e.clientX - prevPointerPos.x;
+        const dy = e.clientY - prevPointerPos.y;
+        prevPointerPos = { x: e.clientX, y: e.clientY };
+        state.targetRotY = Math.max(-1.35, Math.min(1.35, state.targetRotY + dx * 0.0065));
+        state.targetRotX = Math.max(-1.05, Math.min(1.05, state.targetRotX + dy * 0.0065));
+        return;
+      }
+
+      // Raycast for Hover Tooltip & Loupe DOF Focus
+      raycaster.setFromCamera(pointerNDC, camera);
+      const hits = raycaster.intersectObjects(interactiveParts, false);
+
+      if (hits.length > 0) {
+        const hit = hits[0];
+        if (state.loupeMode && bokehPass.uniforms.focus) {
+          bokehPass.uniforms.focus.value = hit.distance;
+        }
+        const info = hit.object.userData.partInfo;
+        if (info) {
+          hoverTooltip.textContent = info.name;
+          hoverTooltip.style.left = `${e.clientX}px`;
+          hoverTooltip.style.top = `${e.clientY}px`;
+          hoverTooltip.classList.add('visible');
+          if (hoveredMesh !== hit.object) {
+            hoveredMesh = hit.object;
+          }
+          return;
+        }
+      }
+      hoverTooltip.classList.remove('visible');
+      hoveredMesh = null;
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      clearTimeout(longPressTimer);
+      if (e.pointerType === 'touch' && state.loupeMode) {
+        setLoupeActive(false);
+      }
+      if (!state.isDragging) return;
+      state.isDragging = false;
+
+      const moveDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (moveDist < 6) {
+        raycaster.setFromCamera(pointerNDC, camera);
+        const hits = raycaster.intersectObjects(interactiveParts, false);
+        if (hits.length > 0) {
+          const hitObj = hits[0].object;
+          const info = hitObj.userData.partInfo;
+          if (info) {
+            if (info.name.includes('заводная головка')) {
+              windWatchBarrel(8.0);
+            }
+            openPartCard(info);
+          }
+        }
+      }
+    });
+
+    // Double-click resets user rotation
+    canvas.addEventListener('dblclick', () => {
+      state.targetRotX = 0.18;
+      state.targetRotY = -0.22;
+    });
+
+    /* ==========================================================================
+       10. KINEMATIC HOROLOGICAL LOOP, ESCAPEMENT PHYSICS & ADAPTIVE QUALITY
+       ========================================================================== */
+    const hudClock = document.getElementById('hud-clock');
+    const hudReserve = document.getElementById('hud-reserve');
+    const hudPhase = document.getElementById('hud-phase');
+
+    let lastFrameTime = performance.now();
+    let simSecondsAccum = 0;
+    let lastBeatIndex = -1;
+    let fpsHistory = [];
+    let isTabHidden = false;
+
+    document.addEventListener('visibilitychange', () => {
+      isTabHidden = document.hidden;
+      if (!isTabHidden) lastFrameTime = performance.now();
+    });
+
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      composer.setSize(w, h);
+      finalPass.uniforms.uAspect.value = w / h;
+    });
+
+    const camLookTarget = new THREE.Vector3();
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      if (isTabHidden) return;
+
+      const dtMs = Math.min(100, now - lastFrameTime);
+      lastFrameTime = now;
+      const dtSec = dtMs / 1000;
+
+      // 0. Preloader update until complete
+      if (!preloaderDone) {
+        preloaderProgress = Math.min(1.0, preloaderProgress + dtSec * 0.72);
+        preloaderAngle += dtSec * (0.4 + preloaderProgress * 2.2);
+        drawPreloaderGear(preloaderProgress, preloaderAngle);
+        if (preloaderProgress >= 1.0) {
+          preloaderStatus.textContent = 'Калибр синхронизирован. Запуск...';
+          preloaderDone = true;
+          setTimeout(() => preloaderEl.classList.add('hidden'), 280);
+        }
+      }
+
+      // Adaptive Performance Monitor (target 60fps on MacBook Air M1)
+      if (dtMs > 0) {
+        fpsHistory.push(1000 / dtMs);
+        if (fpsHistory.length > 45) {
+          const avgFps = fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
+          if (avgFps < 46 && bokehPass.enabled) {
+            bokehPass.enabled = false;
+            bloomPass.resolution.set(window.innerWidth * 0.5, window.innerHeight * 0.5);
+          }
+          fpsHistory.length = 0;
+        }
+      }
+
+      // Determine effective time scale:
+      // Stage 5 ("Heart / Escapement") slows time down 20x as required!
+      const stageFloat = state.scrollProgress * 7.0;
+      const inStage5Macro = Math.exp(-Math.pow((stageFloat - 4.0) / 0.48, 2.0));
+      const stageSlowFactor = 1.0 - inStage5Macro * 0.95; // 1.0 normal -> 0.05 (1/20x) at Stage 5 peak
+      const effectiveTimeScale = state.speedMultiplier * stageSlowFactor;
+
+      simSecondsAccum += dtSec * effectiveTimeScale;
+      finalPass.uniforms.uTime.value = now * 0.001;
+
+      // Discharge power reserve realistically
+      state.powerReserveHours = Math.max(0.5, state.powerReserveHours - (dtSec * effectiveTimeScale) / 3600);
+
+      // 1. REAL LOCAL TIME + SLIDER OFFSET + ACCUMULATED SUB-SECOND ESCAPEMENT
+      const realDate = new Date();
+      const baseSecOfDay =
+        realDate.getHours() * 3600 +
+        realDate.getMinutes() * 60 +
+        realDate.getSeconds() +
+        state.timeOffsetMinutes * 60;
+
+      // 4 Hz Balance = 8 beats per second
+      const totalBeatsFloat = simSecondsAccum * 8.0;
+      const currentBeatInt = Math.floor(totalBeatsFloat);
+      const beatFrac = totalBeatsFloat - currentBeatInt;
+
+      // Trigger Web Audio escapement tick on each new 1/8s beat
+      if (currentBeatInt !== lastBeatIndex && preloaderDone) {
+        lastBeatIndex = currentBeatInt;
+        audio.playEscapementTick(currentBeatInt % 2 === 0, effectiveTimeScale);
+      }
+
+      // Swiss Lever Escapement Step Function:
+      // Escape wheel remains locked during 72% of the semi-oscillation, then unlocks & advances during the central 28% impulse window!
+      const stepWindow = Math.max(0, Math.min(1, (beatFrac - 0.36) / 0.28));
+      const smoothBeatStep = stepWindow * stepWindow * (3 - 2 * stepWindow);
+      const steppedBeats = currentBeatInt + smoothBeatStep;
+
+      // Escapement Phase Label (Покой / Освобождение / Импульс)
+      let phaseName = 'ФАЗА: ПОКОЙ';
+      if (beatFrac >= 0.30 && beatFrac < 0.42) {
+        phaseName = 'ОСВОБОЖДЕНИЕ';
+      } else if (beatFrac >= 0.42 && beatFrac <= 0.66) {
+        phaseName = 'ИМПУЛЬС';
+      }
+      hudPhase.textContent = phaseName;
+
+      // Balance Wheel oscillation: 4 Hz (28,800 vph), amplitude ~280 degrees (4.88 rad)
+      const balancePhase = simSecondsAccum * 4.0 * Math.PI * 2;
+      const balanceAngle = Math.sin(balancePhase) * (280 * Math.PI / 360);
+      balanceGroup.rotation.z = balanceAngle;
+
+      // Update Breathing Hairspring geometry in real time
+      updateHairspring(hairspringLine, balanceAngle);
+
+      // Pallet Fork oscillation: flips between ±6 degrees during impulse window
+      const forkDirection = (currentBeatInt % 2 === 0) ? 1 : -1;
+      const prevDirection = -forkDirection;
+      const forkAngle = THREE.MathUtils.lerp(prevDirection, forkDirection, smoothBeatStep) * 0.11;
+      palletForkGroup.rotation.z = forkAngle;
+
+      // Escape Wheel rotation inside carriage: 15 teeth * 2 beats = 30 beats per revolution (12 degrees per beat)
+      const escapeWheelAngle = -(steppedBeats / 30.0) * Math.PI * 2;
+      escapeWheelGroup.rotation.z = escapeWheelAngle;
+
+      // Exact kinematic angles for Tourbillon Carriage, Gear Train, and Hands
+      const steppedSubSeconds = (steppedBeats % 480) / 8.0;
+      const totalDaySeconds = baseSecOfDay + (simSecondsAccum % 60);
+
+      // Tourbillon Carriage (Fourth Wheel axis): 1 rev per minute (60s), stepping 8 times/sec
+      const secInMinute = (realDate.getSeconds() + (steppedBeats % 8) / 8.0) % 60;
+      const tourbillonAngle = -(secInMinute / 60.0) * Math.PI * 2 - (state.timeOffsetMinutes * Math.PI * 2);
+      tourbillonCarriage.rotation.z = tourbillonAngle;
+
+      // Center Wheel & Minute Hand: 1 rev per hour (3600s)
+      const minuteAngle = -((totalDaySeconds % 3600) / 3600.0) * Math.PI * 2;
+      centerWheelGroup.rotation.z = minuteAngle;
+      minuteHandGroup.rotation.z = minuteAngle;
+
+      // Third Wheel: meshes with Center Wheel (ratio 80:10 = 8x opposite rotation)
+      thirdWheelGroup.rotation.z = -minuteAngle * 8.0;
+
+      // Mainspring Barrel: meshes with Center Pinion (ratio 96:12 = 1/8x opposite rotation)
+      barrelGroup.rotation.z = -minuteAngle / 8.0;
+
+      // Motion Works & Hour Hand: 1 rev per 12 hours (43200s)
+      const hourAngle = -((totalDaySeconds % 43200) / 43200.0) * Math.PI * 2;
+      minuteWheelGroup.rotation.z = -minuteAngle / 3.0;
+      hourWheelMesh.rotation.z = hourAngle;
+      hourHandGroup.rotation.z = hourAngle;
+
+      // Power Reserve Hand & Differential Gear
+      const reserveNorm = state.powerReserveHours / state.maxReserveHours;
+      prHandGroup.rotation.z = THREE.MathUtils.lerp(1.1, -1.1, reserveNorm);
+      prWheelMesh.rotation.z = reserveNorm * Math.PI * 2;
+      updateMainspringGeometry(mainspringLine, reserveNorm);
+
+      // Update Top HUD Clock & Reserve
+      const dispTotalSec = ((Math.floor(totalDaySeconds) % 86400) + 86400) % 86400;
+      const hh = String(Math.floor(dispTotalSec / 3600)).padStart(2, '0');
+      const mm = String(Math.floor((dispTotalSec % 3600) / 60)).padStart(2, '0');
+      const ss = String(dispTotalSec % 60).padStart(2, '0');
+      hudClock.textContent = `${hh}:${mm}:${ss}`;
+      hudReserve.textContent = `${state.powerReserveHours.toFixed(1)} Ч`;
+
+      // 2. SCROLL STAGE ANIMATIONS (DISSOLVE, EXPLODED LAYERS, ENERGY GLOW, CAMERA SPLINE)
+      // Stage 2 -> 6 Dial Dissolve (unless overridden in Stage 8 Skeleton mode)
+      if (stageFloat < 6.4) {
+        const dissolveTarget = (stageFloat > 0.7 && stageFloat < 5.8)
+          ? THREE.MathUtils.smoothstep(stageFloat, 0.7, 1.45) * (1.0 - THREE.MathUtils.smoothstep(stageFloat, 5.2, 5.9))
+          : 0.0;
+        shaderUniforms.uDialDissolve.value = THREE.MathUtils.lerp(shaderUniforms.uDialDissolve.value, dissolveTarget, 0.12);
+      }
+
+      // Stage 3 Exploded View & Stage 7 Elastic Assembly
+      // Peak explosion at stageFloat = 2.0 (Stage 3), secondary semi-open view in Stage 4, reassembled by Stage 7
+      const explodeEnvelope =
+        Math.exp(-Math.pow((stageFloat - 2.0) / 0.58, 2.0)) +
+        0.28 * Math.exp(-Math.pow((stageFloat - 3.0) / 0.55, 2.0));
+
+      layerSpecs.forEach((ls) => {
+        const targetZ = THREE.MathUtils.lerp(ls.zBase, ls.zExplode, Math.min(1.0, explodeEnvelope));
+        const targetRotZ = ls.rotExplode * Math.min(1.0, explodeEnvelope);
+        ls.group.position.z = THREE.MathUtils.lerp(ls.group.position.z, targetZ, 0.12);
+        ls.group.rotation.z = THREE.MathUtils.lerp(ls.group.rotation.z, targetRotZ, 0.12);
+      });
+
+      // Stage 4 Torque Energy Pulse Highlight along Gear Train
+      const energyIntensity = Math.exp(-Math.pow((stageFloat - 3.0) / 0.45, 2.0));
+      if (energyIntensity > 0.02) {
+        const pulseWave = (Math.sin(now * 0.006) * 0.5 + 0.5) * energyIntensity;
+        materials.goldGearMat.emissive.setRGB(pulseWave * 0.45, pulseWave * 0.28, pulseWave * 0.05);
+      } else {
+        materials.goldGearMat.emissive.setRGB(0, 0, 0);
+      }
+
+      // User Drag Inertia + Subtle Softbox Reflection Sweep in Hero
+      state.userRotX = THREE.MathUtils.lerp(state.userRotX, state.targetRotX, 0.08);
+      state.userRotY = THREE.MathUtils.lerp(state.userRotY, state.targetRotY, 0.08);
+      const heroSweep = Math.sin(now * 0.0007) * 0.12 * (1.0 - Math.min(1.0, stageFloat));
+
+      watchRoot.rotation.x = state.userRotX;
+      watchRoot.rotation.y = state.userRotY + heroSweep;
+
+      // Camera Spline Interpolation (respecting prefers-reduced-motion)
+      const curveT = Math.max(0, Math.min(1, state.scrollProgress));
+      if (!state.reducedMotion) {
+        camCurve.getPointAt(curveT, camera.position);
+        lookCurve.getPointAt(curveT, camLookTarget);
+        camera.lookAt(camLookTarget);
+      } else {
+        camera.position.set(0, -3.5, 7.8);
+        camera.lookAt(0, 0, 0);
+      }
+
+      // Update Depth of Field focus distance automatically when not in manual Loupe mode
+      if (!state.loupeMode && bokehPass.uniforms.focus) {
+        const distToTarget = camera.position.distanceTo(camLookTarget);
+        bokehPass.uniforms.focus.value = distToTarget;
+      }
+
+      updateDOMOverlays();
+      composer.render();
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
